@@ -1,0 +1,116 @@
+{
+  "theme": "DARK",
+  "archetype": "2 (Performance Pro)",
+  "vibe": "Elite Athleticism, Command-Center, Live Sports Intensity, Precision",
+  "colors": {
+    "background": {
+      "base": "#0A0A0A",
+      "surface": "#121212",
+      "surface_elevated": "#1A1A1A"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "tertiary": "#71717A"
+    },
+    "brand": {
+      "primary": "#FF3B30",
+      "primary_hover": "#FF5C53",
+      "accent": "#007AFF"
+    },
+    "status": {
+      "live": "#FF3B30",
+      "success": "#34C759",
+      "warning": "#FFCC00"
+    },
+    "border": {
+      "default": "rgba(255, 255, 255, 0.05)",
+      "highlight": "rgba(255, 255, 255, 0.15)"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "headings": "Bebas Neue",
+      "body": "Manrope",
+      "monospace": "JetBrains Mono"
+    },
+    "rules": {
+      "h1": "text-5xl md:text-6xl font-normal uppercase tracking-normal leading-none",
+      "h2": "text-3xl md:text-4xl font-normal uppercase tracking-normal leading-tight",
+      "h3": "text-2xl uppercase font-normal tracking-normal",
+      "scores_large": "text-6xl md:text-8xl font-normal font-heading tracking-tighter leading-none text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.2)]",
+      "overline": "text-xs uppercase tracking-[0.2em] font-bold text-zinc-500",
+      "body_lg": "text-lg font-medium tracking-tight",
+      "body": "text-base font-normal",
+      "body_sm": "text-sm font-medium",
+      "data_table": "text-sm font-mono tracking-tight text-zinc-300"
+    }
+  },
+  "layout_and_spacing": {
+    "strategy": "MODE B: THE CONTROL ROOM GRID (Dense, functional, data correlation)",
+    "container": "w-full max-w-screen-2xl mx-auto px-4 md:px-8",
+    "gap": "gap-4 md:gap-6",
+    "border_radius": "rounded-none md:rounded-sm",
+    "surfaces": "Use 'Grid Borders' (The Technical Look). Avoid thick borders. Rely heavily on 1px solid border-white/5."
+  },
+  "components": {
+    "cards": {
+      "base": "bg-[#121212] border border-white/5",
+      "hover": "hover:bg-[#1A1A1A] hover:border-white/10 transition-colors duration-200",
+      "padding": "p-4 md:p-6"
+    },
+    "buttons": {
+      "primary": "bg-[#FF3B30] text-white hover:bg-[#FF5C53] rounded-sm font-bold uppercase tracking-wider px-6 py-3 transition-colors",
+      "secondary": "bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-sm font-bold px-6 py-3 transition-colors",
+      "ghost": "bg-transparent text-zinc-400 hover:text-white hover:bg-white/5 rounded-sm px-4 py-2"
+    },
+    "live_indicators": {
+      "style": "bg-[#FF3B30] text-white text-xs font-bold px-2 py-0.5 rounded-sm uppercase tracking-widest animate-pulse"
+    },
+    "navigation": {
+      "header": "backdrop-blur-2xl bg-[#0A0A0A]/80 border-b border-white/5 sticky top-0 z-50",
+      "sidebar": "bg-[#0A0A0A] border-r border-white/5 h-screen sticky top-0"
+    }
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "style": "Duotone for active nav, Bold for standard UI icons",
+    "install_command": "yarn add @phosphor-icons/react"
+  },
+  "motion": {
+    "hover": "transition-all duration-200 ease-out",
+    "pulse": "animate-pulse (use strictly for live scores/matches)",
+    "page_transitions": "Subtle fade in, no excessive bouncing"
+  },
+  "testing": {
+    "required_attributes": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case based on role (e.g. data-testid='live-match-card-1')."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero_match_action",
+        "url": "https://images.unsplash.com/photo-1519162952575-c6c7199502a3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwzfHx0YWJsZSUyMHRlbm5pcyUyMGFjdGlvbiUyMG1hdGNofGVufDB8fHx8MTc3ODA5OTczMnww&ixlib=rb-4.1.0&q=85",
+        "description": "Intense match action, player serving"
+      },
+      {
+        "category": "player_profile_background",
+        "url": "https://images.unsplash.com/photo-1774755458463-224dc3ca8331?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHx0YWJsZSUyMHRlbm5pcyUyMGFjdGlvbiUyMG1hdGNofGVufDB8fHx8MTc3ODA5OTczMnww&ixlib=rb-4.1.0&q=85",
+        "description": "Player playing table tennis in action"
+      },
+      {
+        "category": "tournament_detail_header",
+        "url": "https://images.unsplash.com/photo-1690576499915-75585d29e562?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwyfHx0YWJsZSUyMHRlbm5pcyUyMHBhZGRsZSUyMGJhbGx8ZW58MHx8fHwxNzc4MDk5NzMyfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Table tennis paddle on table"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Strictly adhere to the dark mode 'Performance Pro' archetype. Avoid generic Vercel/Stripe 'soft' aesthetics. Use sharp edges or max 4px border-radius.",
+    "Use pure HTML + Tailwind for structural layouts like Dashboards and Grids. Shadcn UI should only be used for complex interactions (Dialogs, Select, Tabs, Calendars) and MUST be heavily customized to remove the default rounded corners and soft shadows.",
+    "Typography: Use 'Bebas Neue' for all Headings (H1, H2, H3) and large numeric scores. Use 'Manrope' for body copy, UI text, and tables. CRITICAL: Never use 'Inter'.",
+    "Layout Strategy: Build a dense 'Control Room' grid. Utilize left-alignment for all data tables and lists to maximize scanability. Do NOT center text heavily.",
+    "Color Usage: Use Deep Obsidian (#0A0A0A) as the main canvas. Colors act as functional signals, not decoration. Only use Electric Blaze (#FF3B30) for critical live states and CTAs.",
+    "Ensure 'data-testid' attributes are added to EVERY button, link, and major block for automated testing compatibility.",
+    "Avoid full-screen generic gradients. Use the 'Tracing Beam' or 'Grid Borders' approach to separate sections instead of floating cards with soft shadows."
+  ]
+}
