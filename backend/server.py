@@ -25,6 +25,7 @@ from auth import (
     get_current_user_id, get_current_user_id_optional,
 )
 from seed_data import seed_database
+from london_2026 import seed_london_2026
 from ai_service import chat_reply, predict_match, summarize_match, recommend_for_user
 
 # DB
@@ -286,14 +287,19 @@ async def ai_predict(body: PredictionRequest):
     match = await db.matches.find_one({"id": body.match_id}, {"_id": 0})
     if not match:
         raise HTTPException(404, "Match not found")
-    p1 = await db.players.find_one({"id": match['player1_id']}, {"_id": 0})
-    p2 = await db.players.find_one({"id": match['player2_id']}, {"_id": 0})
-    if not p1 or not p2:
-        raise HTTPException(404, "Players not found")
     # cache predictions in db
     cached = await db.predictions.find_one({"match_id": body.match_id}, {"_id": 0})
     if cached:
         return PredictionResponse(**cached)
+    if match.get("match_type") == "team":
+        # Build synthetic "team profiles" for prediction
+        p1 = {"name": match['player1_name'], "country": match['player1_country'], "rank_world": None, "points": None, "recent_form": None, "style": "national team"}
+        p2 = {"name": match['player2_name'], "country": match['player2_country'], "rank_world": None, "points": None, "recent_form": None, "style": "national team"}
+    else:
+        p1 = await db.players.find_one({"id": match['player1_id']}, {"_id": 0})
+        p2 = await db.players.find_one({"id": match['player2_id']}, {"_id": 0})
+        if not p1 or not p2:
+            raise HTTPException(404, "Players not found")
     try:
         data = await predict_match(match, p1, p2)
     except Exception as e:
@@ -312,8 +318,12 @@ async def ai_summary(match_id: str):
     cached = await db.summaries.find_one({"match_id": match_id}, {"_id": 0})
     if cached:
         return SummaryResponse(**cached)
-    p1 = await db.players.find_one({"id": match['player1_id']}, {"_id": 0})
-    p2 = await db.players.find_one({"id": match['player2_id']}, {"_id": 0})
+    if match.get("match_type") == "team":
+        p1 = {"name": match['player1_name'], "country": match['player1_country']}
+        p2 = {"name": match['player2_name'], "country": match['player2_country']}
+    else:
+        p1 = await db.players.find_one({"id": match['player1_id']}, {"_id": 0})
+        p2 = await db.players.find_one({"id": match['player2_id']}, {"_id": 0})
     try:
         data = await summarize_match(match, p1, p2)
     except Exception as e:
@@ -358,6 +368,12 @@ async def stats_overview():
     }
 
 
+@api.post("/admin/reseed-london-2026")
+async def admin_reseed():
+    """Wipe and reseed with real London 2026 data."""
+    return await seed_london_2026(db)
+
+
 # Mount router
 app.include_router(api)
 
@@ -372,17 +388,14 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    result = await seed_database(db)
-    logger.info("Seed result: %s", result)
-    # default global notifications
-    if await db.notifications.count_documents({}) == 0:
-        from models import Notification as N
-        notes = [
-            N(title="WTT Champions Frankfurt commence !", body="Suivez les meilleurs joueurs en direct.", type="tournament_start").model_dump(),
-            N(title="Felix Lebrun en quart de finale", body="Match crucial ce soir 20h.", type="match_start").model_dump(),
-            N(title="Sun Yingsha en tête du classement", body="La numéro 1 mondiale conserve sa place.", type="ranking_update").model_dump(),
-        ]
-        await db.notifications.insert_many(notes)
+    # Detect if we already have London 2026 data; if not, force reseed
+    london = await db.competitions.find_one({"id": "london-2026-wttc"}, {"_id": 0})
+    if not london:
+        logger.info("London 2026 not found — running reseed with real data")
+        result = await seed_london_2026(db)
+        logger.info("London 2026 seed result: %s", result)
+    else:
+        logger.info("London 2026 already seeded")
 
 
 @app.on_event("shutdown")

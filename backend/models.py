@@ -73,13 +73,24 @@ class Competition(BaseModel):
 
 
 # ---------- Match ----------
+class Rubber(BaseModel):
+    """Individual rubber inside a team match."""
+    player1_name: str
+    player2_name: str
+    score_p1: int  # games won
+    score_p2: int
+    sets: List[List[int]] = Field(default_factory=list)  # [[11,9],[7,11]]
+
+
 class Match(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=_uid)
     competition_id: str
     competition_name: str
     competition_category: str
-    round_name: str  # "Quarter Final", "Round of 16", "Final"
+    round_name: str  # "Quarter Final", "Round of 16", "Final", "Group Stage"
+    match_type: str = "individual"  # "individual" or "team"
+    gender: str = "men"  # "men" or "women"
     player1_id: str
     player1_name: str
     player1_country: str
@@ -90,14 +101,15 @@ class Match(BaseModel):
     player2_flag: str
     status: Literal["scheduled", "live", "finished"]
     scheduled_at: str
-    sets: List[List[int]] = Field(default_factory=list)  # [[11,8],[8,11],[11,9]]
-    score_p1: int = 0  # sets won
+    sets: List[List[int]] = Field(default_factory=list)
+    score_p1: int = 0
     score_p2: int = 0
     current_set_p1: int = 0
     current_set_p2: int = 0
-    serving: Optional[int] = None  # 1 or 2
-    stream_url: Optional[str] = None  # YouTube embed
+    serving: Optional[int] = None
+    stream_url: Optional[str] = None
     venue: Optional[str] = None
+    rubbers: List[Rubber] = Field(default_factory=list)  # for team matches
 
 
 # ---------- Favorite ----------

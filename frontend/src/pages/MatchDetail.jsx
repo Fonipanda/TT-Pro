@@ -118,6 +118,43 @@ export default function MatchDetail() {
         </div>
       </section>
 
+      {match.rubbers && match.rubbers.length > 0 && (
+        <section data-testid="match-rubbers">
+          <h2 className="font-heading text-3xl tracking-wider mb-4">RUBBERS INDIVIDUELS</h2>
+          <div className="border border-white/5">
+            <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-3 px-4 py-2 tt-overline border-b border-white/5 bg-white/[0.02]">
+              <span>{match.player1_name}</span>
+              <span className="text-center">SCORE</span>
+              <span>{match.player2_name}</span>
+              <span className="text-right">SETS</span>
+            </div>
+            {match.rubbers.map((r, i) => {
+              const winnerP1 = r.score_p1 > r.score_p2;
+              return (
+                <div
+                  key={i}
+                  className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-3 px-4 py-3 border-b border-white/5 last:border-b-0 hover:bg-white/[0.02]"
+                  data-testid={`rubber-${i}`}
+                >
+                  <span className={`font-bold tracking-tight ${winnerP1 ? "text-white" : "text-zinc-500"}`}>
+                    {r.player1_name}
+                  </span>
+                  <span className="font-mono font-bold text-lg tabular-nums">
+                    {r.score_p1}–{r.score_p2}
+                  </span>
+                  <span className={`font-bold tracking-tight ${!winnerP1 && r.score_p2 > r.score_p1 ? "text-white" : "text-zinc-500"}`}>
+                    {r.player2_name}
+                  </span>
+                  <span className="font-mono text-xs text-zinc-400 text-right">
+                    {(r.sets || []).map((s, k) => `${s[0]}-${s[1]}`).join(", ")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {match.stream_url && (
         <section data-testid="match-stream">
           <h2 className="font-heading text-3xl tracking-wider mb-3">RETRANSMISSION</h2>
