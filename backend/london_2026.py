@@ -642,31 +642,232 @@ def london_2026_matches(comp: dict, players: list[dict]) -> list[dict]:
         0, 0, _iso(2026, 5, 10, 13, 0), "scheduled", []))
 
     # =======================================================================
-    # WOMEN — Round of 32 highlights (4 May)
+    # WOMEN — Stage 1A Group 1 (China, Romania, Chinese Taipei, S. Korea)
     # =======================================================================
+    T.append(_team_match(cid, cname, "women", "Group 1 — Stage 1A",
+        "China", "CN", "🇨🇳", "Romania", "RO", "🇷🇴",
+        3, 0, _iso(2026, 5, 2, 10, 0), "finished",
+        [
+            {"player1_name": "Sun Yingsha", "player2_name": "Adina Diaconu",
+             "score_p1": 3, "score_p2": 0, "sets": [[12,10],[11,5],[11,6]]},
+            {"player1_name": "Kuai Man", "player2_name": "Andreea Dragoman",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,6],[11,6],[11,2]]},
+            {"player1_name": "Wang Yidi", "player2_name": "Elena Zaharia",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,6],[11,4],[11,6]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 1 — Stage 1A",
+        "Chinese Taipei", "TW", "🇹🇼", "South Korea", "KR", "🇰🇷",
+        3, 1, _iso(2026, 5, 2, 10, 0), "finished",
+        [
+            {"player1_name": "Wu Ying-syuan", "player2_name": "Kim Na-yeong",
+             "score_p1": 1, "score_p2": 3, "sets": [[5,11],[6,11],[11,9],[10,12]]},
+            {"player1_name": "Yeh Yi-tian", "player2_name": "Shin Yu-bin",
+             "score_p1": 3, "score_p2": 1, "sets": [[11,7],[8,11],[11,7],[11,9]]},
+            {"player1_name": "Peng Yu-han", "player2_name": "Park Ga-hyeon",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,9],[11,4],[12,10]]},
+            {"player1_name": "Wu Ying-syuan", "player2_name": "Shin Yu-bin",
+             "score_p1": 3, "score_p2": 2, "sets": [[12,10],[11,8],[11,13],[8,11],[11,8]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 1 — Stage 1A",
+        "Romania", "RO", "🇷🇴", "South Korea", "KR", "🇰🇷",
+        3, 2, _iso(2026, 5, 2, 17, 0), "finished",
+        [
+            {"player1_name": "Bernadette Szőcs", "player2_name": "Park Ga-hyeon",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,4],[12,10],[11,6]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 1 — Stage 1A",
+        "China", "CN", "🇨🇳", "Chinese Taipei", "TW", "🇹🇼",
+        3, 0, _iso(2026, 5, 2, 17, 0), "finished",
+        [
+            {"player1_name": "Kuai Man", "player2_name": "Wu Ying-syuan",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,6],[11,4],[11,4]]},
+            {"player1_name": "Wang Yidi", "player2_name": "Yeh Yi-tian",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,7],[11,2],[11,9]]},
+            {"player1_name": "Chen Xingtong", "player2_name": "Chen Szu-yu",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,8],[11,6],[11,4]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 1 — Stage 1A",
+        "China", "CN", "🇨🇳", "South Korea", "KR", "🇰🇷",
+        3, 0, _iso(2026, 5, 3, 12, 30), "finished",
+        [
+            {"player1_name": "Sun Yingsha", "player2_name": "Kim Na-yeong",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,8],[11,4],[11,5]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 1 — Stage 1A",
+        "Romania", "RO", "🇷🇴", "Chinese Taipei", "TW", "🇹🇼",
+        3, 1, _iso(2026, 5, 3, 17, 0), "finished",
+        [
+            {"player1_name": "Bernadette Szőcs", "player2_name": "Peng Yu-han",
+             "score_p1": 1, "score_p2": 3, "sets": [[9,11],[11,2],[6,11],[9,11]]},
+            {"player1_name": "Andreea Dragoman", "player2_name": "Yeh Yi-tian",
+             "score_p1": 3, "score_p2": 1, "sets": [[12,10],[7,11],[19,17],[13,11]]},
+        ]))
+
+    # WOMEN — Stage 1A Group 2 (Japan, Germany, France, England)
+    T.append(_team_match(cid, cname, "women", "Group 2 — Stage 1A",
+        "Japan", "JP", "🇯🇵", "England", "EN", "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+        3, 0, _iso(2026, 5, 2, 10, 0), "finished",
+        [
+            {"player1_name": "Miwa Harimoto", "player2_name": "Tianer Yu",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,0],[11,2],[11,7]]},
+            {"player1_name": "Hina Hayata", "player2_name": "Tin-Tin Ho",
+             "score_p1": 3, "score_p2": 1, "sets": [[12,10],[13,11],[6,11],[11,3]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 2 — Stage 1A",
+        "Germany", "DE", "🇩🇪", "France", "FR", "🇫🇷",
+        3, 1, _iso(2026, 5, 2, 10, 0), "finished",
+        [
+            {"player1_name": "Han Ying", "player2_name": "Prithika Pavade",
+             "score_p1": 1, "score_p2": 3, "sets": [[11,6],[9,11],[10,12],[11,13]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 2 — Stage 1A",
+        "England", "EN", "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Germany", "DE", "🇩🇪",
+        0, 3, _iso(2026, 5, 2, 17, 0), "finished",
+        [
+            {"player1_name": "Tin-Tin Ho", "player2_name": "Annett Kaufmann",
+             "score_p1": 2, "score_p2": 3, "sets": [[6,11],[8,11],[11,9],[13,11],[9,11]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 2 — Stage 1A",
+        "Japan", "JP", "🇯🇵", "France", "FR", "🇫🇷",
+        3, 1, _iso(2026, 5, 2, 17, 0), "finished",
+        [
+            {"player1_name": "Hina Hayata", "player2_name": "Prithika Pavade",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,6],[12,10],[11,8]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Group 2 — Stage 1A",
+        "Germany", "DE", "🇩🇪", "Japan", "JP", "🇯🇵",
+        1, 3, _iso(2026, 5, 3, 12, 30), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Group 2 — Stage 1A",
+        "France", "FR", "🇫🇷", "England", "EN", "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+        3, 0, _iso(2026, 5, 3, 12, 30), "finished",
+        [
+            {"player1_name": "Prithika Pavade", "player2_name": "Ella Pashley",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,9],[11,5],[12,10]]},
+            {"player1_name": "Yuan Jia Nan", "player2_name": "Tin-Tin Ho",
+             "score_p1": 3, "score_p2": 2, "sets": [[9,11],[11,7],[9,11],[11,5],[12,10]]},
+        ]))
+
+    # WOMEN — Round of 32 (4-5 May)
     T.append(_team_match(cid, cname, "women", "Round of 32",
         "England", "EN", "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Ukraine", "UA", "🇺🇦",
-        0, 3, _iso(2026, 5, 4, 12, 30), "finished",
+        1, 3, _iso(2026, 5, 4, 12, 30), "finished",
         [
-            {"player1_name": "Tin-Tin Ho", "player2_name": "Tetyana Bilenko",
-             "score_p1": 3, "score_p2": 1, "sets": [[11,7],[8,11],[11,5],[11,9]]},
+            {"player1_name": "Tin-Tin Ho", "player2_name": "Tetiana Bilenko",
+             "score_p1": 3, "score_p2": 1, "sets": [[4,11],[11,6],[11,9],[11,7]]},
         ]))
-
     T.append(_team_match(cid, cname, "women", "Round of 32",
-        "Poland", "PL", "🇵🇱", "Spain", "ES", "🇪🇸",
-        3, 1, _iso(2026, 5, 4, 14, 0), "finished",
+        "China", "CN", "🇨🇳", "Poland", "PL", "🇵🇱",
+        3, 1, _iso(2026, 5, 4, 12, 30), "finished",
         [
-            {"player1_name": "Natalia Bajor", "player2_name": "Maria Xiao",
-             "score_p1": 3, "score_p2": 2, "sets": [[8,11],[11,9],[11,7],[5,11],[11,8]]},
+            {"player1_name": "Sun Yingsha", "player2_name": "Zuzanna Wielgos",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,3],[11,6],[11,8]]},
+            {"player1_name": "Kuai Man", "player2_name": "Natalia Bajor",
+             "score_p1": 1, "score_p2": 3, "sets": [[11,3],[9,11],[9,11],[13,15]]},
+            {"player1_name": "Wang Manyu", "player2_name": "Katarzyna Wegrzyn",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,5],[11,4],[11,4]]},
+            {"player1_name": "Sun Yingsha", "player2_name": "Natalia Bajor",
+             "score_p1": 3, "score_p2": 0, "sets": [[11,2],[11,3],[11,5]]},
         ]))
-
     T.append(_team_match(cid, cname, "women", "Round of 32",
-        "Serbia", "RS", "🇷🇸", "Thailand", "TH", "🇹🇭",
-        3, 2, _iso(2026, 5, 4, 14, 0), "finished",
+        "Hong Kong", "HK", "🇭🇰", "Wales", "WL", "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+        3, 2, _iso(2026, 5, 4, 10, 0), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Sweden", "SE", "🇸🇪", "Kazakhstan", "KZ", "🇰🇿",
+        3, 1, _iso(2026, 5, 4, 10, 0), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "North Korea", "KP", "🇰🇵", "Austria", "AT", "🇦🇹",
+        3, 0, _iso(2026, 5, 4, 17, 0), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Germany", "DE", "🇩🇪", "Malaysia", "MY", "🇲🇾",
+        3, 0, _iso(2026, 5, 4, 19, 30), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Romania", "RO", "🇷🇴", "Netherlands", "NL", "🇳🇱",
+        3, 0, _iso(2026, 5, 4, 19, 30), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "South Korea", "KR", "🇰🇷", "Canada", "CA", "🇨🇦",
+        3, 0, _iso(2026, 5, 4, 19, 30), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Japan", "JP", "🇯🇵", "Croatia", "HR", "🇭🇷",
+        3, 0, _iso(2026, 5, 5, 10, 0), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Italy", "IT", "🇮🇹", "Portugal", "PT", "🇵🇹",
+        3, 1, _iso(2026, 5, 5, 10, 0), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Chinese Taipei", "TW", "🇹🇼", "Puerto Rico", "PR", "🇵🇷",
+        3, 2, _iso(2026, 5, 5, 12, 30), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Singapore", "SG", "🇸🇬", "Serbia", "RS", "🇷🇸",
+        3, 1, _iso(2026, 5, 5, 12, 30), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "France", "FR", "🇫🇷", "Switzerland", "CH", "🇨🇭",
+        3, 0, _iso(2026, 5, 5, 17, 0), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Luxembourg", "LU", "🇱🇺", "Brazil", "BR", "🇧🇷",
+        3, 2, _iso(2026, 5, 5, 17, 0), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "Egypt", "EG", "🇪🇬", "Slovakia", "SK", "🇸🇰",
+        3, 2, _iso(2026, 5, 5, 19, 30), "finished", []))
+    T.append(_team_match(cid, cname, "women", "Round of 32",
+        "United States", "US", "🇺🇸", "India", "IN", "🇮🇳",
+        3, 1, _iso(2026, 5, 5, 19, 30), "finished", []))
+
+    # WOMEN — Round of 16 (6 May)
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "Luxembourg", "LU", "🇱🇺", "Japan", "JP", "🇯🇵",
+        0, 3, _iso(2026, 5, 6, 10, 0), "finished",
         [
-            {"player1_name": "Sabina Surjan", "player2_name": "Suthasini Sawettabut",
-             "score_p1": 3, "score_p2": 2, "sets": [[11,9],[8,11],[11,8],[5,11],[11,7]]},
+            {"player1_name": "Sarah De Nutte", "player2_name": "Miwa Harimoto",
+             "score_p1": 0, "score_p2": 3, "sets": [[8,11],[5,11],[5,11]]},
+            {"player1_name": "Enisa Sadikovic", "player2_name": "Honoka Hashimoto",
+             "score_p1": 0, "score_p2": 3, "sets": [[3,11],[2,11],[5,11]]},
+            {"player1_name": "Ni Xialian", "player2_name": "Hina Hayata",
+             "score_p1": 0, "score_p2": 3, "sets": [[3,11],[4,11],[0,11]]},
         ]))
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "Hong Kong", "HK", "🇭🇰", "Chinese Taipei", "TW", "🇹🇼",
+        3, 2, _iso(2026, 5, 6, 10, 0), "finished",
+        [
+            {"player1_name": "Doo Hoi Kem", "player2_name": "Peng Yu-han",
+             "score_p1": 3, "score_p2": 1, "sets": [[11,3],[10,12],[11,7],[11,8]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "Sweden", "SE", "🇸🇪", "China", "CN", "🇨🇳",
+        0, 3, _iso(2026, 5, 6, 12, 30), "finished",
+        [
+            {"player1_name": "Linda Bergström", "player2_name": "Sun Yingsha",
+             "score_p1": 0, "score_p2": 3, "sets": [[3,11],[4,11],[4,11]]},
+            {"player1_name": "Christina Källberg", "player2_name": "Wang Manyu",
+             "score_p1": 0, "score_p2": 3, "sets": [[5,11],[0,11],[3,11]]},
+        ]))
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "Singapore", "SG", "🇸🇬", "South Korea", "KR", "🇰🇷",
+        1, 3, _iso(2026, 5, 6, 12, 30), "finished", []))
+    # Live evening matches
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "Ukraine", "UA", "🇺🇦", "United States", "US", "🇺🇸",
+        0, 0, _iso(2026, 5, 6, 17, 0), "scheduled", []))
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "Egypt", "EG", "🇪🇬", "Romania", "RO", "🇷🇴",
+        0, 0, _iso(2026, 5, 6, 17, 0), "scheduled", []))
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "France", "FR", "🇫🇷", "Italy", "IT", "🇮🇹",
+        0, 0, _iso(2026, 5, 6, 19, 30), "scheduled", []))
+    T.append(_team_match(cid, cname, "women", "Round of 16",
+        "Germany", "DE", "🇩🇪", "North Korea", "KP", "🇰🇵",
+        0, 0, _iso(2026, 5, 6, 19, 30), "scheduled", []))
+
+    # WOMEN — QF/SF/Final scheduled
+    for slot in [(2026, 5, 7, 10, 0), (2026, 5, 7, 13, 0), (2026, 5, 7, 17, 0), (2026, 5, 7, 20, 0)]:
+        T.append(_team_match(cid, cname, "women", "Quarter Final",
+            "TBD", "XX", "🏴", "TBD", "XX", "🏴",
+            0, 0, _iso(*slot), "scheduled", []))
+    for slot in [(2026, 5, 8, 17, 0), (2026, 5, 8, 20, 0)]:
+        T.append(_team_match(cid, cname, "women", "Semi Final",
+            "TBD", "XX", "🏴", "TBD", "XX", "🏴",
+            0, 0, _iso(*slot), "scheduled", []))
+    T.append(_team_match(cid, cname, "women", "Final",
+        "TBD", "XX", "🏴", "TBD", "XX", "🏴",
+        0, 0, _iso(2026, 5, 9, 13, 0), "scheduled", []))
 
     return T + M
 
