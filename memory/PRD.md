@@ -23,14 +23,14 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 - Notifications globales + spécifiques user
 - IA: chatbot Claude 4.5, prédictions probabilistes, résumés auto, recommandations
 
-## Implemented (2026-02)
+## Implemented (2026-02 → 2026-05)
 - [x] Auth JWT (register/login/me) — bcrypt
 - [x] Dashboard avec hero, stats, live, upcoming, recos IA, comps
 - [x] Live Scores (auto-refresh 12s + bouton Sync WTT manuel + filtre genre)
 - [x] Matches list avec filtres status/catégorie/**genre (H/F/Tous)**
 - [x] Match Detail (score live, sets, stream YouTube, prédiction IA, résumé IA, H2H)
 - [x] Players list + profile + filtres pays/recherche
-- [x] Competitions list + detail + filtres catégorie + matches par round + **filtre genre**
+- [x] Competitions list + detail + filtres catégorie + matches par round + **filtre genre + bouton Importer WTT**
 - [x] Calendar (vue mensuelle, navigation, comps du mois)
 - [x] Search globale
 - [x] Favoris (joueurs + compétitions)
@@ -38,35 +38,34 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 - [x] Chat Assistant flottant (Claude 4.5)
 - [x] AI Predictions / Summary / Recommendations endpoints
 - [x] Real London 2026 ITTF World Team Champs data (men + women brackets jusqu'à R16)
-- [x] **All major competitions seeded** : France Pro A/B/N1 + Champ. France 2026, ITTF Worlds Doha 2027 + JO LA 2028, WTT (Singapore/Saudi/China/USA Smash + Champions Frankfurt/Incheon + Star Doha/Ljubljana + Contender Tunis/Zagreb/Buenos Aires + Feeder Westchester/Otočec), Bundesliga TTBL + TTBF, Chinese Super League H/F, ETTU Champions League H/F + Europe Cup
-- [x] **WTT live-score sync** (`POST /api/sync/wtt`) — tente fetch worldtabletennis.com puis fallback simulator déterministe
-- [x] **Filtre genre `?gender=men|women`** sur `/api/matches`, `/api/matches/live`, `/api/competitions/{id}/matches`
-- [x] Design "Performance Pro" complet (bannières uniques par compétition via Dicebear)
-- [x] Tests backend 59/59 ✅ (40 itération 1 + 19 nouveaux)
+- [x] All major competitions seeded (FFTT Pro A/B/N1, ITTF Worlds 27 + JO LA 28, WTT calendar, Bundesliga, CSL, ETTU)
+- [x] **🚀 REAL WTT API integration (Azure-backed)** : `wtt_api.py` + `wtt_sync.py` + endpoints `/api/sync/wtt`, `/api/sync/wtt/import/{id}`, `/api/wtt/events`. Données réelles importées de 13 events WTT (Singapore Smash 2026, Frankfurt 2025, Doha Champions 2026, Incheon, Ljubljana, Zagreb, Tunis, Buenos Aires, Westchester, Otočec, Saudi, China Smash, US Smash) — 30 matchs officiels par event. Parser supporte: documentCode patterns (FNL/SFNL/QFNL/8FNL/R016-R128 + variantes), 50+ codes IOC pays vers drapeaux emoji, parsing scores `"8,11,7,9,11,8,0"` → sets, gender depuis subEventName, serving détecté pour live.
+- [x] Filtre genre `?gender=men|women` partout
+- [x] Design "Performance Pro" (bannières uniques par compétition Dicebear)
+- [x] Tests backend 65/65 ✅
 
 ## Stats (current)
-- 92 joueurs · 30 compétitions · 189 matchs · 4 LIVE
+- 92 joueurs · 30 compétitions · 550+ matchs · 4 LIVE
+- 13 compétitions WTT branchées sur API réelle (`wtt_event_id`)
 
 ## Backlog (P0/P1/P2)
 ### P0 (next)
-- WTT real-time API parser (currently SPA-rendered, simulator fallback active) — investigate official WTT GraphQL or worldtabletennis.com Next.js `_next/data` JSON
-- Brancher vraies APIs FFTT (libfftt) pour scores Pro A/B en direct
+- ✅ ~~WTT real-time API parser~~ — **DONE** (Azure liveeventsapi.worldtabletennis.com)
+- Brancher API FFTT (libfftt) pour scores Pro A/B en direct (Rust crate / fallback HTML scraping)
 - Push notifications navigateur/mobile
 
 ### P1
+- Mapper plus de compétitions WTT au catalogue routes_all_list (reste ~10 events)
+- Bracket Predictor (pronostics user → Claude IA évalue)
 - Dashboard personnalisé (drag & drop widgets)
-- Historique de suivi (matchs vus)
 - Alertes personnalisées par règles (joueur X joue, score > Y)
 - Tableau bracket dynamique (tournoi)
 - Statistiques avancées (head-to-head sur N derniers matchs)
 - Mobile native app (React Native ou PWA installable)
-- Bracket Predictor (pronostics user → IA Claude évalue & score)
-- Split server.py en routers (auth/players/matches/comps/ai/admin) — approche 700 lignes
+- Split server.py en routers (auth/players/matches/comps/ai/admin/sync)
 
 ### P2
-- Copilot développeur (génération code interne, debug assisté)
-- Localisation EN/DE/CN
-- Mode pari/coupons
-- Communauté (commentaires, likes)
-- Export calendrier .ics / Google Calendar
-- Rate-limiting sur `/api/sync/wtt` + auth admin requise
+- Rate-limiting + auth admin sur `/api/sync/wtt` + `/api/sync/wtt/import/{id}`
+- Doubles "JPN/KOR" → 2 drapeaux (parser doubles WTT)
+- Cache mémoire 5min pour `/api/wtt/events`
+- Copilot développeur, Localisation EN/DE/CN, Mode pari, Communauté, Export .ics

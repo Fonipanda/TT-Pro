@@ -513,11 +513,11 @@ def all_matches(competitions: list[dict], players: list[dict]) -> list[dict]:
             wang, harimoto,
             [], _iso(2026, 3, 22, 14, 0), "scheduled",
             stream=YT["wtt_smash"], venue="Singapore Indoor Stadium"))
-        M.append(_indiv_match(cid, comp['name'], "WTT", "men", "Semi-Final",
+        M.append(_indiv_match(cid, comp['name'], "WTT", "men", "Semi Final",
             wang, cald,
             [], _iso(2026, 3, 21, 14, 0), "scheduled",
             stream=YT["wtt_smash"], venue="Singapore Indoor Stadium"))
-        M.append(_indiv_match(cid, comp['name'], "WTT", "men", "Semi-Final",
+        M.append(_indiv_match(cid, comp['name'], "WTT", "men", "Semi Final",
             harimoto, flebrun,
             [], _iso(2026, 3, 21, 17, 0), "scheduled",
             stream=YT["wtt_smash"], venue="Singapore Indoor Stadium"))
@@ -541,11 +541,11 @@ def all_matches(competitions: list[dict], players: list[dict]) -> list[dict]:
             sun, wangmy, [],
             _iso(2026, 3, 22, 17, 0), "scheduled",
             stream=YT["wtt_smash"], venue="Singapore Indoor Stadium"))
-        M.append(_indiv_match(cid, comp['name'], "WTT", "women", "Semi-Final",
+        M.append(_indiv_match(cid, comp['name'], "WTT", "women", "Semi Final",
             sun, hayata, [],
             _iso(2026, 3, 21, 11, 0), "scheduled",
             stream=YT["wtt_smash"], venue="Singapore Indoor Stadium"))
-        M.append(_indiv_match(cid, comp['name'], "WTT", "women", "Semi-Final",
+        M.append(_indiv_match(cid, comp['name'], "WTT", "women", "Semi Final",
             wangmy, pavade, [],
             _iso(2026, 3, 21, 12, 30), "scheduled",
             stream=YT["wtt_smash"], venue="Singapore Indoor Stadium"))
@@ -559,7 +559,7 @@ def all_matches(competitions: list[dict], players: list[dict]) -> list[dict]:
             ("Round of 32", 2026, 2, 23),
             ("Round of 16", 2026, 2, 25),
             ("Quarter Final", 2026, 2, 27),
-            ("Semi-Final", 2026, 2, 28),
+            ("Semi Final", 2026, 2, 28),
             ("Final", 2026, 3, 1),
         ]
         for rn, y, m, d in rounds:
@@ -766,7 +766,7 @@ def all_matches(competitions: list[dict], players: list[dict]) -> list[dict]:
             wang, flebrun, [],
             _iso(2027, 5, 30, 17, 0), "scheduled",
             stream=YT["ittf"], venue="Lusail Sports Arena"))
-        M.append(_indiv_match(cid, comp['name'], "ITTF", "men", "Semi-Final",
+        M.append(_indiv_match(cid, comp['name'], "ITTF", "men", "Semi Final",
             wang, harimoto, [],
             _iso(2027, 5, 29, 14, 0), "scheduled",
             stream=YT["ittf"], venue="Lusail Sports Arena"))

@@ -143,6 +143,17 @@ COUNTRY_CODE_TO_FLAG = {
     "WAL": ("Wales", "WL", "🏴󠁧󠁢󠁷󠁬󠁳󠁿"),
     "NED": ("Netherlands", "NL", "🇳🇱"),
     "SUI": ("Switzerland", "CH", "🇨🇭"),
+    "MAC": ("Macao", "MO", "🇲🇴"),
+    "TUR": ("Turkey", "TR", "🇹🇷"),
+    "BEL": ("Belgium", "BE", "🇧🇪"),
+    "GRE": ("Greece", "GR", "🇬🇷"),
+    "NGR": ("Nigeria", "NG", "🇳🇬"),
+    "RSA": ("South Africa", "ZA", "🇿🇦"),
+    "CHI": ("Chile", "CL", "🇨🇱"),
+    "PER": ("Peru", "PE", "🇵🇪"),
+    "MEX": ("Mexico", "MX", "🇲🇽"),
+    "CAN": ("Canada", "CA", "🇨🇦"),
+    "IRI": ("Iran", "IR", "🇮🇷"),
     "SVK": ("Slovakia", "SK", "🇸🇰"),
 }
 
