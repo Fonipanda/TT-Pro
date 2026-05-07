@@ -484,6 +484,86 @@ class TestWttSync:
         assert data.get("source") in ("simulator", "wtt", "wtt+simulator")
         assert isinstance(data.get("updated"), int)
 
+    def test_sync_wtt_rich_response_shape(self, api_url, client):
+        """New parallel WTT sync should return rich keys."""
+        t0 = time.time()
+        r = client.post(f"{api_url}/sync/wtt", timeout=30)
+        elapsed = time.time() - t0
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data.get("synced") is True
+        assert data.get("source") in ("simulator", "wtt", "wtt+simulator")
+        # rich shape
+        assert "wtt" in data and isinstance(data["wtt"], dict)
+        for k in ("events", "inserted", "updated", "live_total", "official_total", "details"):
+            assert k in data["wtt"], f"missing wtt.{k}"
+        assert isinstance(data["wtt"]["details"], list)
+        assert "simulator" in data and "updated" in data["simulator"]
+        assert "errors" in data and isinstance(data["errors"], list)
+        assert isinstance(data.get("updated"), int)
+        assert _has_no_mongo_id(data)
+        # Parallel — must complete reasonably fast (<30s)
+        assert elapsed < 30, f"sync took {elapsed:.1f}s — should be parallel"
+
+    def test_wtt_events_endpoint(self, api_url, client):
+        r = client.get(f"{api_url}/wtt/events", timeout=15)
+        assert r.status_code == 200, r.text
+        data = r.json()
+        # Accept either a list (legacy) or {count, events}
+        if isinstance(data, dict):
+            events = data.get("events", [])
+            assert data.get("count", len(events)) == len(events)
+        else:
+            events = data
+        assert isinstance(events, list)
+        assert len(events) >= 26
+        e = events[0]
+        for k in ("eventId", "eventName", "routeName"):
+            assert k in e
+
+    def test_import_wtt_singapore(self, api_url, client):
+        r = client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert "error" not in data, data
+        assert data.get("event_id") == 3234
+        for k in ("inserted", "updated", "live_count", "official_count"):
+            assert k in data
+        assert _has_no_mongo_id(data)
+        # Check matches were imported with wtt- prefix
+        m = client.get(f"{api_url}/competitions/wtt-smash-singapore-2026/matches",
+                       params={"limit": 200}).json()
+        wtt_matches = [x for x in m if x["id"].startswith("wtt-")]
+        # If WTT API is rate-limited we may have inserted=0/official_count=0
+        if data.get("official_count", 0) > 0 or data.get("inserted", 0) > 0:
+            assert len(wtt_matches) >= 1, "expected wtt- prefixed matches"
+            wm = wtt_matches[0]
+            for k in ("round_name", "gender", "sets", "player1_name", "player1_country"):
+                assert k in wm
+            assert wm["gender"] in ("men", "women")
+
+    def test_import_idempotent(self, api_url, client):
+        """Re-importing should not create duplicates (upsert by id)."""
+        r1 = client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
+        assert r1.status_code == 200
+        c1 = len(client.get(f"{api_url}/competitions/wtt-smash-singapore-2026/matches",
+                            params={"limit": 500}).json())
+        r2 = client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
+        assert r2.status_code == 200
+        c2 = len(client.get(f"{api_url}/competitions/wtt-smash-singapore-2026/matches",
+                            params={"limit": 500}).json())
+        assert c2 == c1, f"non-idempotent: {c1} -> {c2}"
+
+    def test_import_unknown_id(self, api_url, client):
+        r = client.post(f"{api_url}/sync/wtt/import/non-existent-id-xyz", timeout=15)
+        assert r.status_code == 200
+        assert r.json().get("error") == "competition_not_found"
+
+    def test_import_no_event_id(self, api_url, client):
+        r = client.post(f"{api_url}/sync/wtt/import/london-2026-wttc", timeout=15)
+        assert r.status_code == 200
+        assert r.json().get("error") == "no_wtt_event_id_on_competition"
+
     def test_admin_reseed_world_idempotent(self, api_url, client):
         """Calling reseed twice must not duplicate competitions."""
         before = client.get(f"{api_url}/stats/overview").json()

@@ -27,7 +27,8 @@ from auth import (
 from seed_data import seed_database
 from london_2026 import seed_london_2026
 from world_competitions import seed_world_competitions
-from wtt_sync import sync_live_scores
+from wtt_sync import sync_live_scores, import_wtt_event
+from wtt_api import fetch_event_routes
 from ai_service import chat_reply, predict_match, summarize_match, recommend_for_user
 
 # DB
@@ -399,10 +400,10 @@ async def admin_reseed_world():
 # ---------- WTT Sync ----------
 @api.post("/sync/wtt")
 async def sync_wtt(competition_id: Optional[str] = None):
-    """Pull latest scores from worldtabletennis.com and Livesport (fallback).
+    """Pull latest scores from the real WTT API for any competition with
+    `wtt_event_id`, plus simulator tick fallback for others.
 
-    If `competition_id` is provided, only syncs matches for that competition.
-    Returns counts of attempted, updated, and source used.
+    If `competition_id` is provided, only syncs that one competition.
     """
     try:
         result = await sync_live_scores(db, competition_id=competition_id)
@@ -410,6 +411,29 @@ async def sync_wtt(competition_id: Optional[str] = None):
     except Exception as e:
         logger.exception("WTT sync error")
         return {"synced": False, "error": str(e), "updated": 0}
+
+
+@api.post("/sync/wtt/import/{competition_id}")
+async def wtt_import(competition_id: str):
+    """Bulk import all live + official matches for a competition from the real
+    WTT API (requires `wtt_event_id` set on the competition).
+    """
+    try:
+        return await import_wtt_event(db, competition_id)
+    except Exception as e:
+        logger.exception("WTT import error")
+        raise HTTPException(500, f"WTT import failed: {str(e)}")
+
+
+@api.get("/wtt/events")
+async def wtt_events_list():
+    """Fetch the public WTT events catalog (eventId / routeName / eventName)."""
+    try:
+        rows = await fetch_event_routes()
+        return {"count": len(rows), "events": rows}
+    except Exception as e:
+        logger.exception("WTT routes fetch error")
+        raise HTTPException(502, f"WTT routes unavailable: {str(e)}")
 
 
 # Mount router

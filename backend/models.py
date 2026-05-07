@@ -70,6 +70,7 @@ class Competition(BaseModel):
     end_date: str
     venue: Optional[str] = None
     description: Optional[str] = None
+    wtt_event_id: Optional[int] = None  # Real WTT eventId for live sync
 
 
 # ---------- Match ----------

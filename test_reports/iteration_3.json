@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 3 — REAL WTT API integration (Azure-backed liveeventsapi.worldtabletennis.com). Backend: 65/65 pytest pass after fixing one parser bug (matches inserted with id=None caused 500s). New tests cover the rich /api/sync/wtt response shape, /api/wtt/events (returns 26 events), /api/sync/wtt/import/{id} for valid/unknown/no-event-id cases, and idempotent re-import. Frontend: /competition/wtt-smash-singapore-2026 displays IMPORTER WTT button (data-testid='wtt-import-btn'), click triggers POST /api/sync/wtt/import/wtt-smash-singapore-2026 (200 OK), real WTT data renders correctly: 30 matches with rounds (Final, Semi Final, Quarter Final, Round of 16), correct genders (men/women), real player names (Lebrun Felix, Coton Flavien, Chen Xingtong, Wang Chuqin, Lebrun Alexis), flags (🇫🇷🇨🇳🇯🇵🇩🇪🇩🇰🇮🇳🇧🇷🇭🇰), and parsed sets (8-11, 10-12, 6-11). London competition correctly hides the import button (no wtt_event_id). /live global Sync WTT button still works and returns the rich response with wtt/simulator/errors/details keys.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "wtt_api.parse_match_card", "issue": "When raw['id'] is missing/empty, parser returned a match dict with id=None which got upserted; subsequent FastAPI list endpoints (e.g. /api/matches?gender=women, /api/competitions/wtt-smash-singapore-2026/matches) returned 500 ResponseValidationError ('Input should be a valid string' for response.id). FIXED by skipping such cards (return None when wtt_match_id is empty). Cleaned 1 orphan doc from MongoDB.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/sync/wtt/import/{id}", "issue": "Response is the bare _sync_real_event dict (event_id, live_count, official_count, inserted, updated). It does NOT include keys 'synced' or 'source'. Tests do not require them, but the docstring in the request mentions a richer shape — consider aligning with /api/sync/wtt rich response."},
+      {"endpoint": "GET /api/wtt/events", "issue": "Returns {count, events} object instead of a bare list. Spec said '26+ events' with no required wrapper — both shapes are acceptable but document it."},
+      {"endpoint": "wtt_api COUNTRY_CODE_TO_FLAG", "issue": "Missing IOC code 'MAC' (Macao) → falls back to raw 'MAC' string with no flag. Doubles competitors expose composite codes like 'JPN/KOR' which similarly bypass the lookup. Consider splitting on '/' for doubles."},
+      {"endpoint": "POST /api/sync/wtt", "issue": "Carry-over from iteration 2: no auth/rate-limit; anyone on the public URL can spam the API."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "CompetitionDetail round filter tabs", "issue": "Two visually-distinct tabs are shown for the same round: 'SEMI FINAL' and 'SEMI-FINAL' (with hyphen). Likely caused by inconsistent round_name normalization between WTT-imported matches and legacy seeded matches in the same competition. Filter UX is confusing.", "selector": "[data-testid='round-filter-tabs']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/competition/wtt-smash-singapore-2026", "issues": ["IMPORTER WTT inline result shows '0 ajouts · 0 mises à jour' even after a successful import that updated 30 matches (because second-run upserts return updated=30 but the visible counter sometimes reads 0 after polling). UX nit only — match list refreshes correctly."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ttpro_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "ALREADY FIXED by testing agent (committed): wtt_api.parse_match_card now returns None when wtt_match_id is empty — please review the change and keep it.",
+    "Add 'MAC' (and any missing IOC codes seen in WTT data) to COUNTRY_CODE_TO_FLAG in wtt_api.py. Optionally split doubles 'JPN/KOR' on '/' to render two flags.",
+    "Normalise round_name capitalisation/hyphenation so /competition page does not render duplicate 'SEMI FINAL' vs 'SEMI-FINAL' filter tabs.",
+    "Consider returning {synced: true, source: 'wtt'} from /api/sync/wtt/import/{id} for consistency with /api/sync/wtt.",
+    "Add basic auth/rate-limit on /api/sync/wtt and /api/sync/wtt/import/{id} before any public deploy."
+  ],
+  "critical_code_review_comments": [
+    "wtt_api.parse_match_card: silent return of None for malformed cards is fine, but consider logger.debug for traceability.",
+    "wtt_sync.sync_live_scores hard-codes asyncio.gather without per-task timeout — one slow event can still block the gather up to httpx 15s timeout x parallelism. Acceptable today (13 comps in <10s observed) but add asyncio.wait_for per task as a guard.",
+    "_round_from_doc_code has duplicate 'R128' entry in mapping list (lines 177 and 181). Harmless but redundant.",
+    "_gender_from_subevent treats 'mixed' as 'men' — request explicitly says map 'Men's Singles' → men, 'Women's Singles' → women but does not specify mixed. Document the choice or introduce 'mixed'.",
+    "/api/wtt/events caches nothing; each call hits Azure CDN. Fine but add 5-min memoization to be safe.",
+    "All endpoints continue to use {'_id': 0} projections — verified via _has_no_mongo_id helper across 65 tests."
+  ],
+  "updated_files": [
+    "/app/backend/wtt_api.py (returned None when raw match has no id — fixes 500 on matches/list endpoints)",
+    "/app/backend/tests/test_ttpro_backend.py (added 6 new tests in TestWttSync: rich response shape, /wtt/events, import singapore, idempotent re-import, unknown id, no event id)"
+  ],
+  "success_rate": {"backend": "100% (65/65)", "frontend": "100% on the 3 flows tested (Singapore import, London hide-button, /live sync)"},
+  "test_credentials": "Tests register tester+<random>@ttpro.app / TtPro2026! per session via /api/auth/register.",
+  "seed_data_creation": "No manual seeding. Backend auto-seeds at startup. Cleaned 1 orphan match (id=None) from MongoDB during RCA — safe operation, not user data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run `pytest /app/backend/tests/ -v` for full 65-test regression (~30s). If WTT API rate-limits (422), test_import_wtt_singapore tolerates inserted=0/official_count=0 — only asserts response keys. Singapore eventId=3234, Frankfurt=3100 work. data-testid selectors used: wtt-import-btn (only on comps with wtt_event_id), sync-wtt-btn on /live. parse_match_card now skips cards without 'id' — keep this fix or duplicate id=None matches will reappear and break /api/competitions/{id}/matches and /api/matches?gender=women with FastAPI ResponseValidationError 500.",
+  "rca of the issue": "Symptom: /api/competitions/wtt-smash-singapore-2026/matches and /api/matches?gender=women returned HTTP 500 randomly after a WTT import. Backend logs showed: fastapi.exceptions.ResponseValidationError: {'type':'string_type','loc':('response',1,'id'),'msg':'Input should be a valid string','input':None}. Root cause: in wtt_api.parse_match_card, line `match_id = f\"wtt-{wtt_match_id}\" if wtt_match_id else None` allowed match_id=None to flow through; downstream upsert in wtt_sync._sync_real_event then created a doc with id=None in the matches collection. Any FastAPI route declaring response_model=List[Match] (Match.id: str required) raised ResponseValidationError when that doc was returned. Mitigation: parser now returns None for cards without a stable WTT id, and we deleted the existing orphan doc from MongoDB. Reproduction: POST /api/sync/wtt/import/wtt-smash-singapore-2026 (twice) → GET /api/competitions/wtt-smash-singapore-2026/matches before the fix → 500. After fix → 200 with 30 well-formed matches."
+}

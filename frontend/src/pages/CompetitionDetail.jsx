@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import MatchCard from "@/components/MatchCard";
 import { useFavorites } from "@/lib/useFavorites";
-import { Star, ArrowLeft } from "lucide-react";
+import { Star, ArrowLeft, Download, Loader2 } from "lucide-react";
 
 export default function CompetitionDetail() {
   const { id } = useParams();
@@ -12,20 +12,38 @@ export default function CompetitionDetail() {
   const [matches, setMatches] = useState([]);
   const [round, setRound] = useState("all");
   const [gender, setGender] = useState("all");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  const loadMatches = async () => {
+    const params = gender !== "all" ? `?gender=${gender}` : "";
+    const m = await api.get(`/competitions/${id}/matches${params}`);
+    setMatches(m.data);
+  };
 
   useEffect(() => {
     (async () => {
       try {
-        const params = gender !== "all" ? `?gender=${gender}` : "";
-        const [c, m] = await Promise.all([
-          api.get(`/competitions/${id}`),
-          api.get(`/competitions/${id}/matches${params}`),
-        ]);
+        const c = await api.get(`/competitions/${id}`);
         setComp(c.data);
-        setMatches(m.data);
+        await loadMatches();
       } catch {}
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, gender]);
+
+  const handleWttImport = async () => {
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const r = await api.post(`/sync/wtt/import/${id}`);
+      setImportResult(r.data);
+      await loadMatches();
+    } catch (e) {
+      setImportResult({ error: e?.response?.data?.detail || "Import échoué" });
+    }
+    setImporting(false);
+  };
 
   if (!comp) return <div className="text-zinc-500">Chargement...</div>;
 
@@ -64,7 +82,31 @@ export default function CompetitionDetail() {
               <Star size={14} fill={fav ? "currentColor" : "none"} />
               {fav ? "Favori" : "Suivre"}
             </button>
+            {comp.wtt_event_id && (
+              <button
+                onClick={handleWttImport}
+                disabled={importing}
+                data-testid="wtt-import-btn"
+                className="px-5 py-2.5 font-bold uppercase tracking-wider text-xs transition-colors flex items-center gap-2 bg-[#FF3B30] hover:bg-[#cc2f26] text-white disabled:opacity-50"
+                title={`Importer données réelles WTT (eventId ${comp.wtt_event_id})`}
+              >
+                {importing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {importing ? "Import..." : "Importer WTT"}
+              </button>
+            )}
           </div>
+          {importResult && (
+            <div className="mt-3 text-xs font-mono text-zinc-300" data-testid="import-result">
+              {importResult.error ? (
+                <span className="text-[#FF3B30]">⚠ {importResult.error}</span>
+              ) : (
+                <span className="text-[#FFCC00]">
+                  ✓ Import WTT : {importResult.inserted ?? 0} ajouts · {importResult.updated ?? 0} mises à jour
+                  {importResult.live_count > 0 && ` · ${importResult.live_count} live`}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

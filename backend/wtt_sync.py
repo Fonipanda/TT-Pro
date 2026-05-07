@@ -1,59 +1,109 @@
-"""WTT live-score sync.
+"""WTT live-score sync — REAL implementation.
 
-Tries to fetch live scores from worldtabletennis.com. If unavailable
-(rate-limit, geo-block, JS-rendered SPA), falls back to a deterministic
-"simulated tick" updater so live matches in the DB still progress
-realistically (good UX for the demo + verifiable in tests).
+Uses the discovered WTT Azure-backed APIs (see wtt_api.py) to fetch live and
+official results, and upserts them into our DB. For competitions WITHOUT a
+linked `wtt_event_id`, falls back to a deterministic simulator so the demo
+keeps moving.
 
-Real production deployment can swap `_fetch_wtt_live` for a real
-parser of WTT's API or a Livesport scraper.
+Public surface:
+  - sync_live_scores(db, competition_id=None) — main sync entry point used by
+    POST /api/sync/wtt
+  - import_wtt_event(db, competition_id) — bulk import all official + live
+    matches for a given competition (eventId required on the comp)
 """
+from __future__ import annotations
+
 import logging
 import random
 from datetime import datetime, timezone
 from typing import Optional
 
-import httpx
+from wtt_api import (
+    get_live_result, get_official_result, parse_match_card,
+)
 
 logger = logging.getLogger(__name__)
 
-WTT_BASE = "https://www.worldtabletennis.com"
-WTT_TIMEOUT = 5.0
 
+# =============================================================================
+# Real WTT sync (per competition with wtt_event_id)
+# =============================================================================
+async def _sync_real_event(db, comp: dict, *, full: bool = False) -> dict:
+    """Pull WTT data for a comp's eventId; upsert matches.
 
-async def _fetch_wtt_live() -> dict:
-    """Best-effort fetch of WTT homepage / live page.
-
-    Returns parsed live-score dict mapping (player1, player2) -> {sets, current}.
-    On failure (timeout, 403, blocked, etc.) returns an empty dict —
-    callers MUST handle the empty case (we then fall back to simulator).
+    If `full=True`, also fetches official (finished) results. Otherwise only
+    LIVE results are pulled (cheap, used for the periodic /api/sync/wtt poll).
     """
-    try:
-        async with httpx.AsyncClient(timeout=WTT_TIMEOUT, follow_redirects=True) as client:
-            resp = await client.get(
-                f"{WTT_BASE}/live-scores",
-                headers={
-                    "User-Agent": (
-                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                    ),
-                    "Accept": "text/html,application/xhtml+xml",
-                    "Accept-Language": "en-US,en;q=0.9",
-                },
+    event_id = comp.get("wtt_event_id")
+    if not event_id:
+        return {"updated": 0, "inserted": 0, "skipped": "no_wtt_event_id"}
+
+    cid = comp["id"]
+    cname = comp["name"]
+    ccat = comp.get("category", "WTT")
+
+    inserted = 0
+    updated = 0
+
+    # --- LIVE matches (currently playing) ---
+    live_raw = await get_live_result(int(event_id))
+    for raw in live_raw:
+        m = parse_match_card(raw, cid, cname, ccat, status="live")
+        if not m:
+            continue
+        result = await db.matches.update_one(
+            {"id": m["id"]},
+            {"$set": m},
+            upsert=True,
+        )
+        if result.upserted_id is not None:
+            inserted += 1
+        else:
+            updated += 1
+
+    official_count = 0
+    if full:
+        # --- OFFICIAL (finished) matches ---
+        off_raw = await get_official_result(int(event_id), take=30, include_match_card=True)
+        official_count = len(off_raw)
+        for raw in off_raw:
+            m = parse_match_card(raw, cid, cname, ccat, status="finished")
+            if not m:
+                continue
+            existing = await db.matches.find_one({"id": m["id"]}, {"_id": 0, "status": 1})
+            if existing and existing.get("status") == "live":
+                continue
+            result = await db.matches.update_one(
+                {"id": m["id"]},
+                {"$set": m},
+                upsert=True,
             )
-        # WTT site is a JS-rendered Next.js SPA — the HTML alone won't contain
-        # live scores (they're loaded client-side). We log status and bail out
-        # gracefully; the simulator below will keep matches progressing.
-        logger.info("WTT fetch status=%s len=%d", resp.status_code, len(resp.text))
-        return {}
-    except Exception as e:  # network, timeout, dns, etc.
-        logger.warning("WTT fetch failed: %s", e)
-        return {}
+            if result.upserted_id is not None:
+                inserted += 1
+            else:
+                updated += 1
+
+    return {"event_id": event_id, "live_count": len(live_raw),
+            "official_count": official_count,
+            "inserted": inserted, "updated": updated}
 
 
+async def import_wtt_event(db, competition_id: str) -> dict:
+    """One-shot bulk import for a competition with a wtt_event_id (full=True)."""
+    comp = await db.competitions.find_one({"id": competition_id}, {"_id": 0})
+    if not comp:
+        return {"error": "competition_not_found", "competition_id": competition_id}
+    if not comp.get("wtt_event_id"):
+        return {"error": "no_wtt_event_id_on_competition",
+                "competition_id": competition_id,
+                "hint": "Set wtt_event_id on the competition document first."}
+    return await _sync_real_event(db, comp, full=True)
+
+
+# =============================================================================
+# Simulator fallback (when no real WTT data available)
+# =============================================================================
 def _next_tick(p1: int, p2: int, serving: Optional[int]) -> tuple[int, int, Optional[int]]:
-    """Advance a live current-set tick realistically."""
-    # 60% chance the server scores
     if serving == 1:
         if random.random() < 0.55:
             p1 += 1
@@ -69,7 +119,6 @@ def _next_tick(p1: int, p2: int, serving: Optional[int]) -> tuple[int, int, Opti
             p1 += 1
         else:
             p2 += 1
-    # Switch service every 2 points (table-tennis rule simplified)
     total = p1 + p2
     if total >= 2 and total % 2 == 0:
         serving = 2 if serving == 1 else 1
@@ -77,7 +126,6 @@ def _next_tick(p1: int, p2: int, serving: Optional[int]) -> tuple[int, int, Opti
 
 
 def _maybe_close_set(p1: int, p2: int) -> bool:
-    """A set ends at 11 with margin >= 2 (deuce extends)."""
     if p1 >= 11 and p1 - p2 >= 2:
         return True
     if p2 >= 11 and p2 - p1 >= 2:
@@ -86,12 +134,6 @@ def _maybe_close_set(p1: int, p2: int) -> bool:
 
 
 async def _simulate_tick(db, competition_id: Optional[str]) -> dict:
-    """Advance every LIVE match one tick.
-
-    For team matches with rubber structure we leave them untouched (rubbers
-    are pre-scripted). For individual matches with a non-empty current set,
-    we add 1-2 points and possibly close the set.
-    """
     q = {"status": "live", "match_type": "individual"}
     if competition_id:
         q["competition_id"] = competition_id
@@ -99,6 +141,9 @@ async def _simulate_tick(db, competition_id: Optional[str]) -> dict:
     updated = 0
     cursor = db.matches.find(q, {"_id": 0})
     async for m in cursor:
+        # Skip real WTT-synced matches — they get fresh data from API
+        if m.get("wtt_match_id"):
+            continue
         sets = list(m.get("sets") or [])
         score_p1 = m.get("score_p1", 0)
         score_p2 = m.get("score_p2", 0)
@@ -106,8 +151,8 @@ async def _simulate_tick(db, competition_id: Optional[str]) -> dict:
         cur_p2 = m.get("current_set_p2", 0)
         serving = m.get("serving") or random.choice([1, 2])
 
-        # Add 1 or 2 ticks per sync
         ticks = random.randint(1, 2)
+        finished = False
         for _ in range(ticks):
             cur_p1, cur_p2, serving = _next_tick(cur_p1, cur_p2, serving)
             if _maybe_close_set(cur_p1, cur_p2):
@@ -118,10 +163,9 @@ async def _simulate_tick(db, competition_id: Optional[str]) -> dict:
                     score_p2 += 1
                 cur_p1 = cur_p2 = 0
                 serving = random.choice([1, 2])
-                # Best-of-7 (first to 4) — close match if reached
                 if score_p1 == 4 or score_p2 == 4:
                     await db.matches.update_one(
-                        {"id": m['id']},
+                        {"id": m["id"]},
                         {"$set": {
                             "status": "finished",
                             "score_p1": score_p1, "score_p2": score_p2,
@@ -131,11 +175,11 @@ async def _simulate_tick(db, competition_id: Optional[str]) -> dict:
                         }},
                     )
                     updated += 1
+                    finished = True
                     break
-        else:
-            # loop completed without break — match still live, persist
+        if not finished:
             await db.matches.update_one(
-                {"id": m['id']},
+                {"id": m["id"]},
                 {"$set": {
                     "score_p1": score_p1, "score_p2": score_p2,
                     "current_set_p1": cur_p1, "current_set_p2": cur_p2,
@@ -144,30 +188,70 @@ async def _simulate_tick(db, competition_id: Optional[str]) -> dict:
                 }},
             )
             updated += 1
-            continue
-        # branch already saved when match was finished
     return {"updated": updated}
 
 
+# =============================================================================
+# Public main entry point
+# =============================================================================
 async def sync_live_scores(db, competition_id: Optional[str] = None) -> dict:
-    """Main entry point — try WTT, then simulator.
+    """Sync live scores for ALL (or one) WTT-mapped competition + simulator
+    fallback for non-WTT live matches.
 
-    Always returns a dict with at least:
-      synced (bool), source ("wtt" | "simulator"), updated (int)
+    Real WTT events are processed in parallel via asyncio.gather to keep total
+    latency bounded (one slow event no longer blocks the others).
     """
-    wtt_data = await _fetch_wtt_live()
-    if wtt_data:
-        # No real parser yet (WTT is SPA); kept for future expansion.
-        return {
-            "synced": True, "source": "wtt", "updated": 0,
-            "note": "WTT page reachable but parser pending — no DB update.",
-            "synced_at": datetime.now(timezone.utc).isoformat(),
-        }
+    import asyncio
 
-    sim = await _simulate_tick(db, competition_id)
-    return {
-        "synced": True, "source": "simulator",
-        "updated": sim["updated"],
-        "note": "WTT site JS-rendered; using realistic simulator tick.",
+    summary = {
         "synced_at": datetime.now(timezone.utc).isoformat(),
+        "wtt": {"events": 0, "inserted": 0, "updated": 0, "live_total": 0,
+                "official_total": 0, "details": []},
+        "simulator": {"updated": 0},
+        "errors": [],
     }
+
+    # 1. Real WTT events (any comp with wtt_event_id) — run in parallel
+    q = {"wtt_event_id": {"$ne": None}}
+    if competition_id:
+        q["id"] = competition_id
+    comps = await db.competitions.find(q, {"_id": 0}).to_list(50)
+
+    async def _one(comp):
+        try:
+            res = await _sync_real_event(db, comp)
+            return ("ok", comp, res)
+        except Exception as e:
+            logger.exception("WTT sync failed for comp %s", comp.get("id"))
+            return ("err", comp, str(e))
+
+    if comps:
+        results = await asyncio.gather(*[_one(c) for c in comps])
+        for kind, comp, payload in results:
+            if kind == "ok":
+                summary["wtt"]["events"] += 1
+                summary["wtt"]["inserted"] += payload.get("inserted", 0)
+                summary["wtt"]["updated"] += payload.get("updated", 0)
+                summary["wtt"]["live_total"] += payload.get("live_count", 0)
+                summary["wtt"]["official_total"] += payload.get("official_count", 0)
+                summary["wtt"]["details"].append({
+                    "competition_id": comp["id"],
+                    "wtt_event_id": comp.get("wtt_event_id"),
+                    **payload,
+                })
+            else:
+                summary["errors"].append({"competition_id": comp["id"], "error": payload})
+
+    # 2. Simulator for everything else (non-WTT-mapped live individual matches)
+    try:
+        sim = await _simulate_tick(db, competition_id)
+        summary["simulator"]["updated"] = sim["updated"]
+    except Exception as e:
+        logger.exception("Simulator sync error")
+        summary["errors"].append({"source": "simulator", "error": str(e)})
+
+    summary["synced"] = True
+    summary["source"] = "wtt+simulator" if comps else "simulator"
+    summary["updated"] = (summary["wtt"]["updated"] + summary["wtt"]["inserted"]
+                          + summary["simulator"]["updated"])
+    return summary
