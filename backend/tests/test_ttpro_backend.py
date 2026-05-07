@@ -521,8 +521,8 @@ class TestWttSync:
         for k in ("eventId", "eventName", "routeName"):
             assert k in e
 
-    def test_import_wtt_singapore(self, api_url, client):
-        r = client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
+    def test_import_wtt_singapore(self, api_url, client, admin_client):
+        r = admin_client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
         assert r.status_code == 200, r.text
         data = r.json()
         assert "error" not in data, data
@@ -542,25 +542,25 @@ class TestWttSync:
                 assert k in wm
             assert wm["gender"] in ("men", "women")
 
-    def test_import_idempotent(self, api_url, client):
+    def test_import_idempotent(self, api_url, client, admin_client):
         """Re-importing should not create duplicates (upsert by id)."""
-        r1 = client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
+        r1 = admin_client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
         assert r1.status_code == 200
         c1 = len(client.get(f"{api_url}/competitions/wtt-smash-singapore-2026/matches",
                             params={"limit": 500}).json())
-        r2 = client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
+        r2 = admin_client.post(f"{api_url}/sync/wtt/import/wtt-smash-singapore-2026", timeout=45)
         assert r2.status_code == 200
         c2 = len(client.get(f"{api_url}/competitions/wtt-smash-singapore-2026/matches",
                             params={"limit": 500}).json())
         assert c2 == c1, f"non-idempotent: {c1} -> {c2}"
 
-    def test_import_unknown_id(self, api_url, client):
-        r = client.post(f"{api_url}/sync/wtt/import/non-existent-id-xyz", timeout=15)
+    def test_import_unknown_id(self, api_url, admin_client):
+        r = admin_client.post(f"{api_url}/sync/wtt/import/non-existent-id-xyz", timeout=15)
         assert r.status_code == 200
         assert r.json().get("error") == "competition_not_found"
 
-    def test_import_no_event_id(self, api_url, client):
-        r = client.post(f"{api_url}/sync/wtt/import/london-2026-wttc", timeout=15)
+    def test_import_no_event_id(self, api_url, admin_client):
+        r = admin_client.post(f"{api_url}/sync/wtt/import/london-2026-wttc", timeout=15)
         assert r.status_code == 200
         assert r.json().get("error") == "no_wtt_event_id_on_competition"
 

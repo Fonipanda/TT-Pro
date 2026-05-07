@@ -1,8 +1,12 @@
 """TT Pro - Main FastAPI server."""
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 import os
 import logging
 import asyncio
@@ -22,14 +26,16 @@ from models import (
 )
 from auth import (
     hash_password, verify_password, create_access_token,
-    get_current_user_id, get_current_user_id_optional,
+    get_current_user_id, get_current_user_id_optional, admin_required,
 )
 from seed_data import seed_database
 from london_2026 import seed_london_2026
 from world_competitions import seed_world_competitions
 from wtt_sync import sync_live_scores, import_wtt_event
 from wtt_api import fetch_event_routes
-from ai_service import chat_reply, predict_match, summarize_match, recommend_for_user
+import fftt_api
+import push_service
+from ai_service import chat_reply, predict_match, summarize_match, recommend_for_user, bracket_predictor_eval
 
 # DB
 mongo_url = os.environ['MONGO_URL']
@@ -38,6 +44,11 @@ db = client[os.environ['DB_NAME']]
 
 app = FastAPI(title="TT Pro API")
 api = APIRouter(prefix="/api")
+
+# Rate limiter — keyed on remote IP, in-memory store
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -67,11 +78,13 @@ async def register(body: UserCreate):
         "email": body.email.lower(),
         "name": body.name,
         "password_hash": hash_password(body.password),
+        "role": "user",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.users.insert_one(doc)
     token = create_access_token(user_id)
-    public = UserPublic(id=user_id, email=doc['email'], name=doc['name'], created_at=doc['created_at'])
+    public = UserPublic(id=user_id, email=doc['email'], name=doc['name'],
+                       role=doc['role'], created_at=doc['created_at'])
     return TokenResponse(access_token=token, user=public)
 
 
@@ -81,7 +94,8 @@ async def login(body: UserLogin):
     if not user or not verify_password(body.password, user['password_hash']):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(user['id'])
-    public = UserPublic(id=user['id'], email=user['email'], name=user['name'], created_at=user['created_at'])
+    public = UserPublic(id=user['id'], email=user['email'], name=user['name'],
+                       role=user.get('role', 'user'), created_at=user['created_at'])
     return TokenResponse(access_token=token, user=public)
 
 
@@ -90,6 +104,7 @@ async def me(user_id: str = Depends(get_current_user_id)):
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user.setdefault("role", "user")
     return UserPublic(**user)
 
 
@@ -399,11 +414,11 @@ async def admin_reseed_world():
 
 # ---------- WTT Sync ----------
 @api.post("/sync/wtt")
-async def sync_wtt(competition_id: Optional[str] = None):
-    """Pull latest scores from the real WTT API for any competition with
-    `wtt_event_id`, plus simulator tick fallback for others.
+@limiter.limit("12/minute")
+async def sync_wtt(request: Request, competition_id: Optional[str] = None):
+    """Pull latest scores from the real WTT API (rate-limited 12/min/IP).
 
-    If `competition_id` is provided, only syncs that one competition.
+    Auto-poll friendly. For exhaustive imports use the dedicated import endpoint.
     """
     try:
         result = await sync_live_scores(db, competition_id=competition_id)
@@ -414,9 +429,14 @@ async def sync_wtt(competition_id: Optional[str] = None):
 
 
 @api.post("/sync/wtt/import/{competition_id}")
-async def wtt_import(competition_id: str):
-    """Bulk import all live + official matches for a competition from the real
-    WTT API (requires `wtt_event_id` set on the competition).
+@limiter.limit("6/minute")
+async def wtt_import(
+    request: Request,
+    competition_id: str,
+    _admin: str = Depends(admin_required),
+):
+    """[ADMIN] Bulk import all live + official matches for a competition from
+    the real WTT API (requires `wtt_event_id` set on the competition).
     """
     try:
         return await import_wtt_event(db, competition_id)
@@ -426,7 +446,8 @@ async def wtt_import(competition_id: str):
 
 
 @api.get("/wtt/events")
-async def wtt_events_list():
+@limiter.limit("30/minute")
+async def wtt_events_list(request: Request):
     """Fetch the public WTT events catalog (eventId / routeName / eventName)."""
     try:
         rows = await fetch_event_routes()
@@ -434,6 +455,146 @@ async def wtt_events_list():
     except Exception as e:
         logger.exception("WTT routes fetch error")
         raise HTTPException(502, f"WTT routes unavailable: {str(e)}")
+
+
+# ---------- FFTT Sync (credential-gated) ----------
+@api.get("/sync/fftt/status")
+async def fftt_status():
+    """Quick check whether FFTT API credentials are configured."""
+    return fftt_api.status()
+
+
+@api.get("/sync/fftt/club/{club_id}")
+@limiter.limit("20/minute")
+async def fftt_get_club(request: Request, club_id: str):
+    """Get a FFTT club by id (e.g., '08940210'). Requires FFTT_API_ID/KEY."""
+    return await fftt_api.fetch_club(club_id)
+
+
+@api.get("/sync/fftt/clubs/{department}")
+@limiter.limit("20/minute")
+async def fftt_clubs_dept(request: Request, department: str):
+    """List FFTT clubs in a department (ex. '94')."""
+    return await fftt_api.fetch_clubs_by_dept(department)
+
+
+@api.get("/sync/fftt/player/{licence}")
+@limiter.limit("20/minute")
+async def fftt_get_player(request: Request, licence: str):
+    """Get FFTT player profile by licence number."""
+    return await fftt_api.fetch_player(licence)
+
+
+@api.get("/sync/fftt/club/{club_id}/players")
+@limiter.limit("20/minute")
+async def fftt_club_players(request: Request, club_id: str):
+    """List all licensed players in a FFTT club."""
+    return await fftt_api.fetch_players_by_club(club_id)
+
+
+@api.get("/sync/fftt/player/{licence}/matches")
+@limiter.limit("20/minute")
+async def fftt_player_matches(request: Request, licence: str):
+    """Get a player's match history (parties) — current season."""
+    return await fftt_api.fetch_player_partees(licence)
+
+
+@api.get("/sync/fftt/proab/{division}")
+@limiter.limit("20/minute")
+async def fftt_pro_calendar(request: Request, division: str = "proa_h"):
+    """Pro A/B calendar (proa_h, proa_f, prob_h, prob_f)."""
+    return await fftt_api.fetch_pro_a_b_calendar(division)
+
+
+# ---------- Web Push Notifications ----------
+@api.get("/push/public-key")
+async def push_public_key():
+    """VAPID public key for browser PushManager.subscribe()."""
+    return {
+        "configured": push_service.is_configured(),
+        "public_key": push_service.public_key(),
+    }
+
+
+@api.post("/push/subscribe")
+async def push_subscribe(
+    body: dict,
+    user_id: Optional[str] = Depends(get_current_user_id_optional),
+):
+    """Save a browser PushSubscription. Body must be the JSON output of
+    `pushManager.subscribe(...)` (endpoint, keys.p256dh, keys.auth)."""
+    return await push_service.save_subscription(db, body, user_id=user_id)
+
+
+@api.post("/push/unsubscribe")
+async def push_unsubscribe(body: dict):
+    endpoint = body.get("endpoint")
+    if not endpoint:
+        raise HTTPException(400, "endpoint required")
+    return await push_service.delete_subscription(db, endpoint)
+
+
+@api.post("/push/send")
+@limiter.limit("10/minute")
+async def push_send(
+    request: Request,
+    body: dict,
+    _admin: str = Depends(admin_required),
+):
+    """[ADMIN] Send a push notification to all (or one user's) subscriptions."""
+    title = body.get("title") or "TT Pro"
+    msg = body.get("body") or ""
+    user_id = body.get("user_id")
+    url = body.get("url") or "/"
+    return await push_service.send_to_all(db, title, msg, user_id=user_id, url=url)
+
+
+# ---------- Bracket Predictor (IA) ----------
+@api.post("/bracket-predictor/eval")
+@limiter.limit("10/minute")
+async def bracket_eval(request: Request, body: dict):
+    """Evaluate a user's bracket predictions with Claude AI.
+
+    Body: {competition_name: str, predictions: [{round, player1, player2, picked_winner, predicted_score?}]}
+    """
+    cname = body.get("competition_name", "Tournoi")
+    preds = body.get("predictions") or []
+    if not preds:
+        raise HTTPException(400, "predictions array required")
+    try:
+        return await bracket_predictor_eval(cname, preds)
+    except Exception as e:
+        logger.exception("Bracket predictor error")
+        raise HTTPException(500, f"AI evaluation failed: {str(e)}")
+
+
+@api.post("/bracket-predictor/save")
+async def bracket_save(
+    body: dict,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Save a user's bracket prediction."""
+    import uuid
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "competition_id": body.get("competition_id"),
+        "competition_name": body.get("competition_name"),
+        "predictions": body.get("predictions") or [],
+        "ai_evaluation": body.get("ai_evaluation"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.bracket_predictions.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.get("/bracket-predictor/mine")
+async def bracket_mine(user_id: str = Depends(get_current_user_id)):
+    docs = await db.bracket_predictions.find(
+        {"user_id": user_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return docs
 
 
 # Mount router

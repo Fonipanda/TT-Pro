@@ -16,6 +16,7 @@ import Favorites from "@/pages/Favorites";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Notifications from "@/pages/Notifications";
+import BracketPredictor from "@/pages/BracketPredictor";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/bracket-predictor" element={<BracketPredictor />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
             </Routes>

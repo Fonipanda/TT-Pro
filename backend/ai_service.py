@@ -121,3 +121,53 @@ Return a short bulleted list (3 items) recommending which matches/players they s
         system_message=CHAT_SYSTEM_PROMPT,
     ).with_model(MODEL_PROVIDER, MODEL_NAME)
     return await chat.send_message(UserMessage(text=prompt))
+
+
+async def bracket_predictor_eval(competition_name: str, predictions: list[dict]) -> dict:
+    """Evaluate a user's bracket predictions and return AI score + analysis.
+
+    `predictions`: list of {round, player1, player2, picked_winner, predicted_score?}
+    """
+    pred_lines = []
+    for p in predictions:
+        pred_lines.append(
+            f"- {p.get('round','')}: {p.get('player1','?')} vs {p.get('player2','?')} → "
+            f"User picks: {p.get('picked_winner','?')}"
+            + (f" ({p.get('predicted_score')})" if p.get('predicted_score') else "")
+        )
+    pred_text = "\n".join(pred_lines) if pred_lines else "(no picks)"
+    prompt = f"""You are a table tennis pundit. Evaluate the user's bracket predictions for {competition_name}.
+
+User predictions:
+{pred_text}
+
+Return STRICT JSON only:
+{{
+  "overall_score": <0-100 confidence score for the user's overall bracket realism>,
+  "expert_picks": [
+    {{"round": "...", "expert_winner": "Name", "rationale": "1 short sentence"}},
+    ...
+  ],
+  "agreement_count": <integer how many user picks the AI agrees with>,
+  "summary": "2-3 sentences global feedback in French"
+}}"""
+    chat = LlmChat(
+        api_key=EMERGENT_LLM_KEY,
+        session_id=f"bracket-{competition_name}",
+        system_message="You are a TT bracket prediction expert. Reply with valid JSON only.",
+    ).with_model(MODEL_PROVIDER, MODEL_NAME)
+    response = await chat.send_message(UserMessage(text=prompt))
+    try:
+        text = response.strip()
+        if text.startswith("```"):
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+        return json.loads(text.strip())
+    except Exception:
+        return {
+            "overall_score": 50,
+            "expert_picks": [],
+            "agreement_count": 0,
+            "summary": "Analyse IA indisponible — réessayez plus tard.",
+        }

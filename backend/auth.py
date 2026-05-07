@@ -54,6 +54,45 @@ async def get_current_user_id(
     return user_id
 
 
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    """Resolve current user as a doc (id, email, name, role)."""
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    payload = decode_token(credentials.credentials)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    return {"id": user_id, "_token_payload": payload}
+
+
+async def admin_required(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> str:
+    """Dependency for admin-only routes. Verifies the JWT belongs to a user
+    whose role == 'admin' in MongoDB. Returns the admin user_id."""
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    payload = decode_token(credentials.credentials)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Lazy import db connection to avoid circular import
+    import os as _os
+    from motor.motor_asyncio import AsyncIOMotorClient as _Cli
+    cli = _Cli(_os.environ['MONGO_URL'])
+    db = cli[_os.environ['DB_NAME']]
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "role": 1})
+    cli.close()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return user_id
+
+
 async def get_current_user_id_optional(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):

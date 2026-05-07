@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Bell } from "lucide-react";
+import PushToggle from "@/components/PushToggle";
 
 export default function Notifications() {
   const [notes, setNotes] = useState([]);
@@ -12,9 +13,12 @@ export default function Notifications() {
 
   return (
     <div className="space-y-6 tt-fade-in" data-testid="notifications-page">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Bell className="text-[#FF3B30]" />
         <h1 className="font-heading text-5xl md:text-6xl tracking-wider">NOTIFICATIONS</h1>
+        <div className="ml-auto" data-testid="push-toggle-wrapper">
+          <PushToggle />
+        </div>
       </div>
       {loading ? (
         <div className="text-zinc-500">Chargement...</div>

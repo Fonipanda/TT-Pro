@@ -1,0 +1,70 @@
+{
+  "summary": "Iteration 4 — 5 features tested end-to-end (FFTT credential-gated client, Web Push, Bracket Predictor IA, +10 WTT events, admin auth + rate-limit on sync). Backend: 89/90 tests pass via pytest (1 known infra issue: rate-limit 12/min on /api/sync/wtt does NOT trigger 429 through the public ingress because slowapi.get_remote_address sees the k8s ingress IP, not the real client IP — works locally on 127.0.0.1, see RCA). All other features work as spec'd. Frontend: /bracket-predictor renders 12 comp pickers, Singapore Smash loads 4 rounds + 38 matches + 76 player picks, picking highlights in red, 'Évaluer mon bracket' triggers Claude AI which returns a coherent French summary in <30s. /notifications shows push-toggle-wrapper. Dashboard has the new generic pitch (FFTT · ITTF · WTT · BUNDESLIGA · CHINESE SUPER LEAGUE · ECL) with no London 2026 hero. Admin login (admin@ttpro.app and tester@ttpro.app) both return role='admin'. /api/sync/wtt/import is correctly admin-gated (401 without auth, 403 with normal user, 200 with admin). Total comps = 40. WTT-mapped = 23+. New events present (Chennai/Foz/Lagos/Muscat/Westchester25/BAS25/Saudi25/Incheon25/Ljubljana25/Zagreb25). MongoDB _id never leaks.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/sync/wtt (rate-limit)",
+        "issue": "slowapi.Limiter with key_func=get_remote_address does NOT enforce 12/min via the public k8s ingress URL — 15 consecutive POSTs all returned 200 from outside. Locally (curl http://localhost:8001/...) the 13th call correctly returns 429. Root cause: behind k8s ingress, request.client.host is the ingress controller IP (constant per cluster but possibly distributed across replicas), so the limiter buckets are either huge or rotated. Fix: use a custom key_func that prefers X-Forwarded-For header, e.g. `def key(request): xff = request.headers.get('x-forwarded-for'); return xff.split(',')[0].strip() if xff else get_remote_address(request)`. Without this fix, the rate-limit feature is effectively bypassed in production.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/sync/wtt/import/{id}",
+        "issue": "Returns 401 Unauthorized when no Authorization header (was 401 from get_current_user_id). Spec says '401 without auth' so this is correct, but the existing iteration-3 regression tests in test_ttpro_backend.py needed updating to pass admin_client. Updated."
+      },
+      {
+        "endpoint": "GET /api/sync/fftt/club/{id}",
+        "issue": "Returns 200 with {error: 'credentials_missing_or_endpoint_unreachable', configured: false} as expected (graceful). FYI when env vars are eventually set, ensure the parser ignores HTML-error responses (ParseError) gracefully."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/notifications PushToggle",
+        "issues": [
+          "When the test browser has Notification.permission === 'denied', the toggle shows the 'push-denied' red banner ('Notifications bloquées — autorisez-les dans les paramètres du site') and never renders the 'push-unconfigured' (VAPID non configuré) pill. This is correct logic but means the spec wording 'shows Push désactivé (VAPID non configuré)' only matches in browsers where permission is 'default'/'granted'. Consider showing both states (denied AND unconfigured) so admins know they need both browser permission AND VAPID env vars."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration4.py",
+    "/app/backend/tests/test_ttpro_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/pytest/iteration4_results.xml"
+  ],
+  "action_items": [
+    "HIGH: Fix slowapi key_func to honor X-Forwarded-For so rate-limit (12/min on /sync/wtt, 6/min on /sync/wtt/import, 10/min on /push/send and /bracket-predictor/eval, 20/min on /sync/fftt/*) actually triggers 429 through the public ingress. Currently the limit is bypassed externally.",
+    "MEDIUM: Update test_ttpro_backend.py iteration-3 import tests already adjusted by testing agent to use admin_client (4 tests). Keep as regression.",
+    "LOW: PushToggle should show a combined hint when both Notification.permission==='denied' AND backend says configured=false, so users know to fix both."
+  ],
+  "critical_code_review_comments": [
+    "server.py: admin_required dependency correctly returns 401 vs 403 (no auth -> 401, normal user -> 403). Good.",
+    "/api/push/subscribe accepts arbitrary `body: dict` — ok for PushSubscription shape, but consider Pydantic model with required `endpoint` and `keys` for stronger validation (right now save_subscription likely tolerates malformed bodies).",
+    "/api/bracket-predictor/eval: limit 10/min/IP is generous for a Claude call costing ~1-3s. Fine but watch wallet.",
+    "fftt_api.status() exposes `needed_env_vars` list (FFTT_API_ID, FFTT_API_KEY) — good for ops UX.",
+    "push_service.send_to_all returns {configured: false, would_push: N} when VAPID missing — useful for admin dry-run testing without configuring keys.",
+    "All endpoints continue to exclude _id (verified via _has_no_mongo_id helper across 89 tests).",
+    "models.py UserPublic.role default 'user' is correct; existing seeded users without role gracefully return 'user' via setdefault in /auth/me.",
+    "Rate-limit decorator order (@api.post then @limiter.limit) is correct for slowapi/FastAPI. Issue is purely the key_func, not the decorator placement."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py (added admin_user + admin_client session fixtures)",
+    "/app/backend/tests/test_iteration4.py (NEW — 25 tests covering all 5 features)",
+    "/app/backend/tests/test_ttpro_backend.py (4 import tests now use admin_client)"
+  ],
+  "success_rate": {
+    "backend": "98.9% (89/90 — only the public-ingress rate-limit test fails)",
+    "frontend": "100% on flows tested: nav-bracket visible, /bracket-predictor 12 pickers, Singapore 4 rounds × 38 matches × 76 player buttons, red highlight on pick, AI evaluation rendered with 218-char French summary, /notifications push toggle wrapper present, dashboard pitch correct"
+  },
+  "test_credentials": "admin@ttpro.app / Admin2026! and tester@ttpro.app / TtPro2026! both verified as role='admin'. Random tester+<uuid>@ttpro.app/TtPro2026! created per session via /auth/register.",
+  "seed_data_creation": "None. Backend auto-seeds.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run `pytest /app/backend/tests/ -v -k 'not test_sync_wtt_rate_limit'` for clean 89/89 pass (~55s). The rate-limit test (test_iteration4.py::TestRateLimit::test_sync_wtt_rate_limit) is intentionally a known-fail that documents the X-Forwarded-For bug — un-skip only after main agent fixes the key_func. Frontend selectors used: data-testid='nav-bracket', 'pick-comp-{compId}', 'round-{roundName}', 'bracket-match-{matchId}', 'pick-{matchId}-{playerNameNoSpaces}', 'evaluate-btn', 'eval-summary', 'evaluation', 'push-toggle-wrapper'. Bracket Predictor AI eval takes 5-15s — wait at least 60s. Singapore Smash competition id is 'wtt-smash-singapore-2026' with wtt_event_id=3234.",
+  "rca of the issue": "Symptom: Rate-limit annotation `@limiter.limit('12/minute')` on POST /api/sync/wtt does NOT return 429 when called 15× in a row from outside the cluster (https://rally-hub-6.preview.emergentagent.com/...), but DOES return 429 on the 13th call when called from inside the pod (curl http://localhost:8001/...). Root cause: slowapi.util.get_remote_address returns request.client.host. In the kubernetes ingress topology used here, request.client.host is the IP of the ingress controller (not the real client). Either (a) multiple ingress replicas distribute the requests across distinct internal IPs, each getting its own 12-call bucket, or (b) the bucket key resolves to a high-traffic shared IP that effectively never fills. In both cases the rate-limit is silently bypassed for every external caller. Mitigation: implement `def real_ip(request): xff = request.headers.get('x-forwarded-for') or request.headers.get('x-real-ip'); return xff.split(',')[0].strip() if xff else get_remote_address(request)` and pass it as `Limiter(key_func=real_ip)`. Verified locally that the 12/min bucket works — only the IP-detection layer is broken."
+}

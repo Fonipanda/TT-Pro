@@ -10,6 +10,7 @@ const navItems = [
   { to: "/competitions", label: "Compétitions", testid: "nav-competitions" },
   { to: "/players", label: "Joueurs", testid: "nav-players" },
   { to: "/calendar", label: "Calendrier", testid: "nav-calendar" },
+  { to: "/bracket-predictor", label: "Predictor", testid: "nav-bracket" },
 ];
 
 export default function Header() {

@@ -28,6 +28,7 @@ class UserPublic(BaseModel):
     id: str
     email: EmailStr
     name: str
+    role: str = "user"  # 'user' or 'admin'
     created_at: str
 
 class TokenResponse(BaseModel):
