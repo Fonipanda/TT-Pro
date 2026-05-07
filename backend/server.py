@@ -26,6 +26,8 @@ from auth import (
 )
 from seed_data import seed_database
 from london_2026 import seed_london_2026
+from world_competitions import seed_world_competitions
+from wtt_sync import sync_live_scores
 from ai_service import chat_reply, predict_match, summarize_match, recommend_for_user
 
 # DB
@@ -147,8 +149,11 @@ async def get_competition(comp_id: str):
 
 
 @api.get("/competitions/{comp_id}/matches", response_model=List[Match])
-async def competition_matches(comp_id: str):
-    docs = await db.matches.find({"competition_id": comp_id}, {"_id": 0}).sort("scheduled_at", 1).to_list(200)
+async def competition_matches(comp_id: str, gender: Optional[str] = None):
+    q = {"competition_id": comp_id}
+    if gender and gender in ("men", "women"):
+        q['gender'] = gender
+    docs = await db.matches.find(q, {"_id": 0}).sort("scheduled_at", 1).to_list(200)
     return docs
 
 
@@ -157,6 +162,8 @@ async def competition_matches(comp_id: str):
 async def list_matches(
     status: Optional[str] = None,
     category: Optional[str] = None,
+    gender: Optional[str] = None,
+    competition_id: Optional[str] = None,
     limit: int = 50,
 ):
     q = {}
@@ -164,13 +171,20 @@ async def list_matches(
         q['status'] = status
     if category:
         q['competition_category'] = category
+    if gender and gender in ("men", "women"):
+        q['gender'] = gender
+    if competition_id:
+        q['competition_id'] = competition_id
     docs = await db.matches.find(q, {"_id": 0}).sort("scheduled_at", -1).to_list(limit)
     return docs
 
 
 @api.get("/matches/live", response_model=List[Match])
-async def live_matches():
-    docs = await db.matches.find({"status": "live"}, {"_id": 0}).to_list(50)
+async def live_matches(gender: Optional[str] = None):
+    q = {"status": "live"}
+    if gender and gender in ("men", "women"):
+        q['gender'] = gender
+    docs = await db.matches.find(q, {"_id": 0}).to_list(50)
     return docs
 
 
@@ -370,8 +384,32 @@ async def stats_overview():
 
 @api.post("/admin/reseed-london-2026")
 async def admin_reseed():
-    """Wipe and reseed with real London 2026 data."""
-    return await seed_london_2026(db)
+    """Wipe and reseed with real London 2026 data, then enrich with all majors."""
+    london_result = await seed_london_2026(db)
+    world_result = await seed_world_competitions(db)
+    return {**london_result, **world_result}
+
+
+@api.post("/admin/reseed-world")
+async def admin_reseed_world():
+    """Append all major TT competitions (Pro A/B, WTT, Bundesliga, CSL, ECL...)."""
+    return await seed_world_competitions(db)
+
+
+# ---------- WTT Sync ----------
+@api.post("/sync/wtt")
+async def sync_wtt(competition_id: Optional[str] = None):
+    """Pull latest scores from worldtabletennis.com and Livesport (fallback).
+
+    If `competition_id` is provided, only syncs matches for that competition.
+    Returns counts of attempted, updated, and source used.
+    """
+    try:
+        result = await sync_live_scores(db, competition_id=competition_id)
+        return result
+    except Exception as e:
+        logger.exception("WTT sync error")
+        return {"synced": False, "error": str(e), "updated": 0}
 
 
 # Mount router
@@ -396,6 +434,15 @@ async def startup():
         logger.info("London 2026 seed result: %s", result)
     else:
         logger.info("London 2026 already seeded")
+
+    # World competitions enrichment (idempotent — checks each comp by id)
+    world_marker = await db.competitions.find_one({"id": "fftt-pro-a-2025-26-m"}, {"_id": 0})
+    if not world_marker:
+        logger.info("World competitions not seeded — running enrichment")
+        wresult = await seed_world_competitions(db)
+        logger.info("World competitions seed result: %s", wresult)
+    else:
+        logger.info("World competitions already seeded")
 
 
 @app.on_event("shutdown")

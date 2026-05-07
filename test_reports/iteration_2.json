@@ -1,0 +1,46 @@
+{
+  "summary": "Full regression + new-feature validation for TT Pro iteration 2 (world competitions + gender filter + WTT sync). Backend: 59/59 pytest tests pass (40 from iteration 1 still green + 19 new tests covering Pro A/B France, Bundesliga, CSL, ECL, WTT calendar, ITTF, gender filter on /api/matches and /api/competitions/{id}/matches and /api/matches/live, /api/sync/wtt simulator, and /api/admin/reseed-world idempotency). Frontend: /matches shows Tous/Hommes/Dames + 6 category pills (Toutes/WTT/ITTF/France/Bundesliga/CSL/ChampionsLeague) and filters cards correctly (38 women / 46 France matches). /live has working 'Sync WTT' button (200 OK from /api/sync/wtt). /competitions shows exactly 30 competitions with category pills. /competition/london-2026-wttc renders gender filter and shows real Dames Round-of-32 matches (Poland-Spain 3-1, Serbia-Thailand 3-2, England-Ukraine 0-3). MongoDB _id never leaks. Stats: 92 players, 30 competitions, 189 matches.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sync/wtt", "issue": "Always returns updated=0 because the simulator only ticks live matches and there are usually 0–4 live matches. Acceptable per mocked-api note, but consider a `?force=true` flag to also bump scheduled matches to live during demos."},
+      {"endpoint": "POST /api/admin/reseed-world", "issue": "Idempotent for competitions and players (verified counts unchanged across two consecutive calls), but matches counter slightly increases on each reseed if the seeder regenerates fixtures with new ids. Not blocking — counts stayed equal in this run (189 -> 189) but worth a code review of dedupe key in world_competitions.seed_world_competitions."},
+      {"endpoint": "GET /api/notifications (carry-over)", "issue": "Invalid bearer token silently returns global notifications instead of 401 — same as iteration 1."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/competitions", "issues": ["Many competition cards share the same generic 'chewy/dog' fallback hero image (Pro A Messieurs, Pro B, Nationale 1, Pro A Dames, etc.). Not relevant to professional table tennis. Consider per-category placeholder images (FFTT logo, Bundesliga TTBL logo, ITTF logo) or a neutral pattern."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ttpro_backend.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Replace generic 'chewy/dog' competition cover images with sport-relevant placeholders per category (low priority cosmetic).",
+    "Optional: dedupe matches in seed_world_competitions by deterministic id to fully guarantee match-count idempotency on reseed.",
+    "Optional: return 401 on invalid/expired tokens instead of falling back to anonymous (auth/me already does this; notifications does not)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~450 lines. Still acceptable but the 700-line threshold is approaching — plan a split (auth.py, players.py, competitions.py, matches.py, ai.py, sync.py, admin.py routers).",
+    "POST /api/sync/wtt swallows any exception and returns synced=False — good for UX, but the error string is exposed verbatim in the response. Consider redacting or using a generic message + log.",
+    "competition_matches and list_matches duplicate the gender validation (`gender in ('men','women')`). Extract a tiny helper to avoid drift.",
+    "Startup hook seeds twice on cold start (london + world); fine but logs are noisy. Add a single `if not seeded` umbrella check.",
+    "wtt_sync.sync_live_scores is invoked from POST /api/sync/wtt with no rate limiting or auth — anyone on the public URL can spam the simulator. Add a simple rate-limit or admin-only guard before production.",
+    "All endpoints continue to use {'_id': 0} projections — verified no MongoDB ObjectId leakage in 59 tests including the new world-competitions / gender / sync endpoints."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_ttpro_backend.py (added TestWorldCompetitions, TestGenderFilter, TestWttSync; bumped stats thresholds to 92/30/189)"
+  ],
+  "success_rate": {"backend": "100% (59/59)", "frontend": "100% on the targeted flows tested"},
+  "test_credentials": "Tests dynamically register tester+<random>@ttpro.app / TtPro2026! per session via /api/auth/register (per /app/memory/test_credentials.md).",
+  "seed_data_creation": "No manual seeding. Backend startup auto-seeds + the world-competitions enrichment is already loaded (verified via /api/stats/overview: players=92, competitions=30, matches=189, live=4).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run `pytest /app/backend/tests/ -v` for the full 59-test regression (~30s). New parametrised category test covers WTT/ITTF/France/Bundesliga/CSL/ChampionsLeague. The reseed-world idempotency test only checks competitions count between two consecutive POST /api/admin/reseed-world calls (matches/players are not asserted equal because the seeder may add new fixtures — adjust if needed). Frontend smoke selectors: data-testid='matches-page', 'live-page', 'competitions-page', 'competition-detail', 'sync-wtt-btn', 'filter-gender-{all|men|women}', 'filter-cat-{WTT|ITTF|France|Bundesliga|CSL|ChampionsLeague}', 'filter-comp-{...}' on /competitions. Live page has 4 currently-live matches.",
+  "rca of the issue": "n/a — no failures."
+}

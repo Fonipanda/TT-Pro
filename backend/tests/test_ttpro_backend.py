@@ -40,9 +40,9 @@ class TestHealth:
         for key in ("players", "competitions", "matches", "live_matches"):
             assert key in data, f"missing {key}"
             assert isinstance(data[key], int)
-        assert data["players"] >= 22
-        assert data["competitions"] >= 10
-        assert data["matches"] >= 70
+        assert data["players"] >= 92
+        assert data["competitions"] >= 30
+        assert data["matches"] >= 189
 
 
 # ---------- Auth ----------
@@ -373,3 +373,129 @@ class TestAI:
         assert "recommendations" in data
         assert isinstance(data["recommendations"], str)
         assert len(data["recommendations"]) > 0
+
+
+
+# ---------- World competitions enrichment ----------
+class TestWorldCompetitions:
+    """Validates Pro A/B France, Bundesliga, CSL, ECL, WTT calendar, ITTF."""
+
+    @pytest.mark.parametrize("category", ["WTT", "ITTF", "France", "Bundesliga", "CSL", "ChampionsLeague"])
+    def test_category_present(self, api_url, client, category):
+        r = client.get(f"{api_url}/competitions", params={"category": category})
+        assert r.status_code == 200
+        comps = r.json()
+        assert len(comps) >= 1, f"no competition found for category={category}"
+        for c in comps:
+            assert c["category"] == category
+
+    def test_pro_a_men_competition(self, api_url, client):
+        r = client.get(f"{api_url}/competitions/fftt-pro-a-2025-26-m")
+        assert r.status_code == 200
+        c = r.json()
+        assert c["category"] == "France"
+        assert _has_no_mongo_id(c)
+
+    def test_pro_a_men_matches(self, api_url, client):
+        r = client.get(f"{api_url}/competitions/fftt-pro-a-2025-26-m/matches")
+        assert r.status_code == 200
+        matches = r.json()
+        assert len(matches) >= 1
+        for m in matches:
+            assert m["competition_id"] == "fftt-pro-a-2025-26-m"
+
+    def test_wtt_smash_singapore_matches(self, api_url, client):
+        r = client.get(f"{api_url}/competitions/wtt-smash-singapore-2026/matches")
+        assert r.status_code == 200
+        matches = r.json()
+        assert len(matches) >= 1
+        for m in matches:
+            assert m["competition_id"] == "wtt-smash-singapore-2026"
+
+
+# ---------- Gender filter ----------
+class TestGenderFilter:
+    def test_matches_gender_men(self, api_url, client):
+        r = client.get(f"{api_url}/matches", params={"gender": "men", "limit": 200})
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data) >= 1
+        for m in data:
+            assert m.get("gender") == "men"
+
+    def test_matches_gender_women(self, api_url, client):
+        r = client.get(f"{api_url}/matches", params={"gender": "women", "limit": 200})
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data) >= 1
+        for m in data:
+            assert m.get("gender") == "women"
+
+    def test_matches_category_france(self, api_url, client):
+        r = client.get(f"{api_url}/matches", params={"category": "France", "limit": 200})
+        assert r.status_code == 200
+        data = r.json()
+        assert len(data) >= 1
+        for m in data:
+            assert m["competition_category"] == "France"
+
+    def test_matches_category_bundesliga(self, api_url, client):
+        r = client.get(f"{api_url}/matches", params={"category": "Bundesliga", "limit": 200})
+        assert r.status_code == 200
+        for m in r.json():
+            assert m["competition_category"] == "Bundesliga"
+
+    def test_matches_category_csl(self, api_url, client):
+        r = client.get(f"{api_url}/matches", params={"category": "CSL", "limit": 200})
+        assert r.status_code == 200
+        for m in r.json():
+            assert m["competition_category"] == "CSL"
+
+    def test_matches_category_champions_league(self, api_url, client):
+        r = client.get(f"{api_url}/matches", params={"category": "ChampionsLeague", "limit": 200})
+        assert r.status_code == 200
+        for m in r.json():
+            assert m["competition_category"] == "ChampionsLeague"
+
+    def test_london_women_bracket(self, api_url, client):
+        r = client.get(f"{api_url}/competitions/london-2026-wttc/matches", params={"gender": "women"})
+        assert r.status_code == 200
+        matches = r.json()
+        assert len(matches) >= 1
+        for m in matches:
+            assert m.get("gender") == "women"
+            assert m["competition_id"] == "london-2026-wttc"
+
+    def test_live_matches_gender_filter(self, api_url, client):
+        r = client.get(f"{api_url}/matches/live", params={"gender": "men"})
+        assert r.status_code == 200
+        for m in r.json():
+            assert m.get("gender") == "men"
+            assert m["status"] == "live"
+
+
+# ---------- WTT Sync ----------
+class TestWttSync:
+    def test_sync_wtt_returns_synced(self, api_url, client):
+        r = client.post(f"{api_url}/sync/wtt")
+        assert r.status_code == 200
+        data = r.json()
+        assert data.get("synced") is True
+        assert data.get("source") in ("simulator", "wtt", "wtt+simulator")
+        assert isinstance(data.get("updated"), int)
+
+    def test_admin_reseed_world_idempotent(self, api_url, client):
+        """Calling reseed twice must not duplicate competitions."""
+        before = client.get(f"{api_url}/stats/overview").json()
+        r1 = client.post(f"{api_url}/admin/reseed-world")
+        assert r1.status_code == 200
+        mid = client.get(f"{api_url}/stats/overview").json()
+        r2 = client.post(f"{api_url}/admin/reseed-world")
+        assert r2.status_code == 200
+        after = client.get(f"{api_url}/stats/overview").json()
+        # competitions count must not increase between r1 and r2
+        assert after["competitions"] == mid["competitions"], (
+            f"reseed-world is not idempotent: {mid['competitions']} -> {after['competitions']}"
+        )
+        # And neither between before and after (already seeded at startup)
+        assert after["competitions"] >= before["competitions"]

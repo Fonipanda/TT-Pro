@@ -11,19 +11,21 @@ export default function CompetitionDetail() {
   const [comp, setComp] = useState(null);
   const [matches, setMatches] = useState([]);
   const [round, setRound] = useState("all");
+  const [gender, setGender] = useState("all");
 
   useEffect(() => {
     (async () => {
       try {
+        const params = gender !== "all" ? `?gender=${gender}` : "";
         const [c, m] = await Promise.all([
           api.get(`/competitions/${id}`),
-          api.get(`/competitions/${id}/matches`),
+          api.get(`/competitions/${id}/matches${params}`),
         ]);
         setComp(c.data);
         setMatches(m.data);
       } catch {}
     })();
-  }, [id]);
+  }, [id, gender]);
 
   if (!comp) return <div className="text-zinc-500">Chargement...</div>;
 
@@ -66,19 +68,39 @@ export default function CompetitionDetail() {
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-1" data-testid="round-filters">
-        {rounds.map((r) => (
-          <button
-            key={r}
-            onClick={() => setRound(r)}
-            data-testid={`filter-round-${r}`}
-            className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
-              round === r ? "bg-[#FF3B30] text-white" : "bg-white/5 text-zinc-400 hover:text-white"
-            }`}
-          >
-            {r === "all" ? "Tous les tours" : r}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex flex-wrap gap-1" data-testid="round-filters">
+          {rounds.map((r) => (
+            <button
+              key={r}
+              onClick={() => setRound(r)}
+              data-testid={`filter-round-${r}`}
+              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
+                round === r ? "bg-[#FF3B30] text-white" : "bg-white/5 text-zinc-400 hover:text-white"
+              }`}
+            >
+              {r === "all" ? "Tous les tours" : r}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1 ml-auto" data-testid="gender-filters">
+          {[
+            { v: "all", l: "Tous", icon: "★" },
+            { v: "men", l: "Hommes", icon: "♂" },
+            { v: "women", l: "Dames", icon: "♀" },
+          ].map((g) => (
+            <button
+              key={g.v}
+              onClick={() => setGender(g.v)}
+              data-testid={`filter-gender-${g.v}`}
+              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
+                gender === g.v ? "bg-[#FFCC00] text-black" : "bg-white/5 text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span className="mr-1.5">{g.icon}</span>{g.l}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
