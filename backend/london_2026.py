@@ -890,15 +890,25 @@ async def seed_london_2026(db) -> dict:
     if matches:
         await db.matches.insert_many([{**m} for m in matches])
 
-    # Notifications
+    # Notifications — generic platform-level (multi-competition coverage)
     await db.notifications.delete_many({})
     from models import Notification
     notes = [
-        Notification(title="🏓 London 2026 — Centenary World Champs", body="100 ans après les premiers Mondiaux à Londres en 1926, le tournoi est de retour à l'OVO Arena Wembley !", type="tournament_start").model_dump(),
-        Notification(title="⚡ Sweden 3-2 China — SHOCK !", body="La Suède crée la sensation en battant la Chine, championne en titre, en phase de groupe.", type="match_result").model_dump(),
-        Notification(title="🇫🇷 La France domine le Groupe 2", body="Sweep de la France en Stage 1A : victoires sur Chinese Taipei (3-0), Allemagne (3-1) et Japon (3-2).", type="match_result").model_dump(),
-        Notification(title="LIVE : England 🏴󠁧󠁢󠁥󠁮󠁧󠁿 vs Brazil 🇧🇷", body="Round of 16 — Calderano face aux locaux, 19h30 OVO Arena.", type="match_start").model_dump(),
-        Notification(title="Quarts demain", body="Chine vs Chinese Taipei, France vs Allemagne, Suède vs Japon — 7 mai.", type="schedule").model_dump(),
+        Notification(title="🇫🇷 Pro A — Top of the table",
+                     body="La Romagne face à Pontoise vendredi 19h30. Lebrun bros vs Seyfried.",
+                     type="match_start").model_dump(),
+        Notification(title="🏆 WTT Champions Frankfurt",
+                     body="Données officielles WTT importées : 30 matchs (Wang Chuqin, Lebrun, Harimoto…). Filtres H/F disponibles.",
+                     type="tournament_start").model_dump(),
+        Notification(title="🇩🇪 Bundesliga TTBL — Spitzenspiel",
+                     body="Borussia Düsseldorf reçoit Saarbrücken. Duda vs Qiu attendu en spitzenspiel.",
+                     type="match_start").model_dump(),
+        Notification(title="🇨🇳 Chinese Super League",
+                     body="Wang Chuqin vs Ma Long programmé Round 5. Le choc des générations.",
+                     type="match_start").model_dump(),
+        Notification(title="⭐ ETTU Champions League",
+                     body="Phase de groupes en cours — 6 clubs européens dont Düsseldorf, La Romagne, Linz.",
+                     type="tournament_start").model_dump(),
     ]
     await db.notifications.insert_many(notes)
 

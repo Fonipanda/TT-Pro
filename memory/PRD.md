@@ -23,9 +23,12 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 - Notifications globales + spécifiques user
 - IA: chatbot Claude 4.5, prédictions probabilistes, résumés auto, recommandations
 
+## Recent change (May 2026)
+- ⚖️ **Plateforme rééquilibrée — multi-compétitions** : retrait de la focalisation London 2026 du Dashboard et des notifications. Hero générique "Tout le tennis de table pro, en un seul endroit" avec catégories FFTT · ITTF · WTT · Bundesliga · CSL · ECL. Section Compétitions groupée par catégorie (3 par catégorie). Notifications portent désormais sur l'ensemble des ligues (Pro A, Bundesliga spitzenspiel, CSL, ECL, Championnats France Élite, ITTF Doha 2027). London 2026 reste dans la base comme **une compétition parmi d'autres** (pas l'événement vedette).
+
 ## Implemented (2026-02 → 2026-05)
 - [x] Auth JWT (register/login/me) — bcrypt
-- [x] Dashboard avec hero, stats, live, upcoming, recos IA, comps
+- [x] Dashboard générique multi-compétitions (FFTT · ITTF · WTT · Bundesliga · CSL · ECL) avec hero, stats, live, upcoming, recos IA, comps groupées par catégorie
 - [x] Live Scores (auto-refresh 12s + bouton Sync WTT manuel + filtre genre)
 - [x] Matches list avec filtres status/catégorie/**genre (H/F/Tous)**
 - [x] Match Detail (score live, sets, stream YouTube, prédiction IA, résumé IA, H2H)
