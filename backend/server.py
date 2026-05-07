@@ -468,53 +468,72 @@ async def wtt_events_list(request: Request):
         raise HTTPException(502, f"WTT routes unavailable: {str(e)}")
 
 
-# ---------- FFTT Sync (credential-gated) ----------
+# ---------- FFTT Sync (via libfftt public proxy — no credentials needed) ----------
 @api.get("/sync/fftt/status")
 async def fftt_status():
-    """Quick check whether FFTT API credentials are configured."""
+    """Quick status check — libfftt proxy is public, always configured=true."""
     return fftt_api.status()
 
 
-@api.get("/sync/fftt/club/{club_id}")
-@limiter.limit("20/minute")
-async def fftt_get_club(request: Request, club_id: str):
-    """Get a FFTT club by id (e.g., '08940210'). Requires FFTT_API_ID/KEY."""
-    return await fftt_api.fetch_club(club_id)
-
-
-@api.get("/sync/fftt/clubs/{department}")
-@limiter.limit("20/minute")
-async def fftt_clubs_dept(request: Request, department: str):
-    """List FFTT clubs in a department (ex. '94')."""
-    return await fftt_api.fetch_clubs_by_dept(department)
-
-
 @api.get("/sync/fftt/player/{licence}")
-@limiter.limit("20/minute")
+@limiter.limit("30/minute")
 async def fftt_get_player(request: Request, licence: str):
-    """Get FFTT player profile by licence number."""
+    """Get FFTT player profile by licence number (e.g. 3421810 = Felix Lebrun)."""
     return await fftt_api.fetch_player(licence)
 
 
-@api.get("/sync/fftt/club/{club_id}/players")
-@limiter.limit("20/minute")
-async def fftt_club_players(request: Request, club_id: str):
-    """List all licensed players in a FFTT club."""
-    return await fftt_api.fetch_players_by_club(club_id)
-
-
 @api.get("/sync/fftt/player/{licence}/matches")
-@limiter.limit("20/minute")
+@limiter.limit("30/minute")
 async def fftt_player_matches(request: Request, licence: str):
-    """Get a player's match history (parties) — current season."""
-    return await fftt_api.fetch_player_partees(licence)
+    """Get a player's match history (parties) for the current season."""
+    return await fftt_api.fetch_player_matches(licence)
 
 
-@api.get("/sync/fftt/proab/{division}")
+@api.get("/sync/fftt/club/{club_id}")
+@limiter.limit("30/minute")
+async def fftt_get_club(request: Request, club_id: str):
+    """Get FFTT club details (e.g. 11340010 = Montpellier TT)."""
+    return await fftt_api.fetch_club(club_id)
+
+
+@api.get("/sync/fftt/club/{club_id}/roster")
 @limiter.limit("20/minute")
-async def fftt_pro_calendar(request: Request, division: str = "proa_h"):
-    """Pro A/B calendar (proa_h, proa_f, prob_h, prob_f)."""
-    return await fftt_api.fetch_pro_a_b_calendar(division)
+async def fftt_club_roster(request: Request, club_id: str):
+    """List all licensed players of a club (full roster — can be 100s)."""
+    return await fftt_api.fetch_club_roster(club_id)
+
+
+@api.get("/sync/fftt/club/{club_id}/teams")
+@limiter.limit("30/minute")
+async def fftt_club_teams(request: Request, club_id: str):
+    """Get all teams a club has engaged in competition this season."""
+    return await fftt_api.fetch_club_teams(club_id)
+
+
+@api.get("/sync/fftt/poule/{d1}/{cx_poule}/results")
+@limiter.limit("20/minute")
+async def fftt_poule_results(request: Request, d1: str, cx_poule: str):
+    """Get matches of a specific poule (championship D1 + poule cx_poule)."""
+    return await fftt_api.fetch_poule_results(d1, cx_poule)
+
+
+@api.get("/sync/fftt/poule/{d1}/{cx_poule}/standings")
+@limiter.limit("20/minute")
+async def fftt_poule_standings(request: Request, d1: str, cx_poule: str):
+    """Get the standings of a specific poule."""
+    return await fftt_api.fetch_poule_standings(d1, cx_poule)
+
+
+@api.post("/sync/fftt/import-club/{club_id}")
+@limiter.limit("3/minute")
+async def fftt_import_club(
+    request: Request,
+    club_id: str,
+    _admin: str = Depends(admin_required),
+):
+    """[ADMIN] Bulk-import a FFTT club's full roster (all licensed players)
+    into our players collection. Up to a few hundred records per club."""
+    return await fftt_api.import_club_roster(db, club_id)
 
 
 # ---------- Web Push Notifications ----------
