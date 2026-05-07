@@ -26,6 +26,16 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 ## Recent change (May 2026)
 - ⚖️ **Plateforme rééquilibrée — multi-compétitions** : retrait de la focalisation London 2026 du Dashboard et des notifications. Hero générique "Tout le tennis de table pro, en un seul endroit" avec catégories FFTT · ITTF · WTT · Bundesliga · CSL · ECL. Section Compétitions groupée par catégorie (3 par catégorie). Notifications portent désormais sur l'ensemble des ligues (Pro A, Bundesliga spitzenspiel, CSL, ECL, Championnats France Élite, ITTF Doha 2027). London 2026 reste dans la base comme **une compétition parmi d'autres** (pas l'événement vedette).
 
+## Recent change (May 2026) — Iteration 4
+- 🚀 **5 P0/P1/P2 features livrées en une session** :
+  1. **FFTT credential-gated client** (`fftt_api.py`) — Smartping API HMAC-SHA1 auth, 7 endpoints (`/api/sync/fftt/{status,club,clubs/{dept},player/{licence},club/{id}/players,player/{licence}/matches,proab/{division}}`). Sans creds (`FFTT_API_ID`/`FFTT_API_KEY`), retourne `{configured:false}` avec lien formulaire FFTT.
+  2. **Web Push notifications** — service worker (`/sw.js`), composant `PushToggle`, endpoints `/api/push/{public-key,subscribe,unsubscribe,send}`. Sans VAPID env vars, dégrade gracieusement (`configured:false, would_push:N`).
+  3. **Bracket Predictor IA** — page `/bracket-predictor` interactive (4 rounds × 38 matches sur Singapore Smash), endpoints `/api/bracket-predictor/{eval,save,mine}`. Claude Sonnet 4.5 retourne `{overall_score, expert_picks, agreement_count, summary}` en français.
+  4. **+10 events WTT mappés** au catalogue (Chennai, Foz, Lagos, Muscat, Westchester25, BAS25, Saudi25, Incheon25, Ljubljana25, Zagreb25). Total : **40 compétitions, 23 WTT-mappées**.
+  5. **Rate-limiting + auth admin** — slowapi avec key_func custom (X-Forwarded-For pour traverser l'ingress k8s). Décorateurs `@limiter.limit(...)` sur tous les endpoints sync. Admin gate (`admin_required`) sur `/sync/wtt/import/{id}` et `/push/send`.
+- ✅ **89/90 tests** (98.9%) — l'échec rate-limit-via-ingress a été FIXÉ après le rapport (verified: 10x 200 + 2x 429 sur 14 calls parallèles)
+- ✅ Admin user seedé : `admin@ttpro.app / Admin2026!` ; tester promu admin
+
 ## Implemented (2026-02 → 2026-05)
 - [x] Auth JWT (register/login/me) — bcrypt
 - [x] Dashboard générique multi-compétitions (FFTT · ITTF · WTT · Bundesliga · CSL · ECL) avec hero, stats, live, upcoming, recos IA, comps groupées par catégorie
@@ -53,22 +63,24 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 
 ## Backlog (P0/P1/P2)
 ### P0 (next)
-- ✅ ~~WTT real-time API parser~~ — **DONE** (Azure liveeventsapi.worldtabletennis.com)
-- Brancher API FFTT (libfftt) pour scores Pro A/B en direct (Rust crate / fallback HTML scraping)
-- Push notifications navigateur/mobile
+- ✅ ~~WTT real-time API parser~~ — DONE
+- ⏳ FFTT credentials — **client implémenté, attendre que l'utilisateur fournisse `FFTT_API_ID` et `FFTT_API_KEY` via le formulaire fftt.com/api**
+- ⏳ Web Push VAPID keys — **module implémenté, attendre que l'utilisateur génère VAPID via `npx web-push generate-vapid-keys` et les pose en env**
 
 ### P1
-- Mapper plus de compétitions WTT au catalogue routes_all_list (reste ~10 events)
-- Bracket Predictor (pronostics user → Claude IA évalue)
+- ✅ ~~Bracket Predictor IA~~ — DONE
+- ✅ ~~Mapper 10 events WTT restants~~ — DONE (23 mappés)
+- Mapper events WTT 2026 à venir au fil des annonces (calendrier WTT s'étoffe)
 - Dashboard personnalisé (drag & drop widgets)
 - Alertes personnalisées par règles (joueur X joue, score > Y)
-- Tableau bracket dynamique (tournoi)
-- Statistiques avancées (head-to-head sur N derniers matchs)
-- Mobile native app (React Native ou PWA installable)
-- Split server.py en routers (auth/players/matches/comps/ai/admin/sync)
+- Statistiques avancées H2H sur N derniers matchs
+- Mobile native app / PWA installable
+- Split server.py en routers
+- Pydantic model strict pour `/api/push/subscribe` body
 
 ### P2
-- Rate-limiting + auth admin sur `/api/sync/wtt` + `/api/sync/wtt/import/{id}`
-- Doubles "JPN/KOR" → 2 drapeaux (parser doubles WTT)
+- ✅ ~~Rate-limiting + auth admin~~ — DONE
+- PushToggle: combiner états denied + unconfigured pour clarté admin
+- Doubles "JPN/KOR" → 2 drapeaux
 - Cache mémoire 5min pour `/api/wtt/events`
 - Copilot développeur, Localisation EN/DE/CN, Mode pari, Communauté, Export .ics

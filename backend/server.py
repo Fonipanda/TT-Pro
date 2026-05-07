@@ -45,8 +45,19 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI(title="TT Pro API")
 api = APIRouter(prefix="/api")
 
-# Rate limiter — keyed on remote IP, in-memory store
-limiter = Limiter(key_func=get_remote_address)
+
+def _real_ip(request) -> str:
+    """Extract the real client IP from X-Forwarded-For (set by k8s ingress)
+    or fall back to request.client.host. Required so slowapi rate-limits
+    bucket per real client and not per ingress controller IP."""
+    xff = request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip")
+    if xff:
+        return xff.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+# Rate limiter — keyed on real client IP via X-Forwarded-For
+limiter = Limiter(key_func=_real_ip)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
