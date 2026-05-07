@@ -94,10 +94,10 @@ def extra_players() -> list[dict]:
 # ============================================================================
 def all_competitions() -> list[dict]:
     """Every major TT competition (real, current 2025-26 season + 2026-27)."""
-    BANNER_GENERIC = "https://images.unsplash.com/photo-1544717305-2782549b5136?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
-    BANNER_FRANCE = "https://images.unsplash.com/photo-1601758125946-6ec2ef64daf8?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
-    BANNER_WTT = "https://images.unsplash.com/photo-1622782914767-404fb9ab3f57?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
-    BANNER_BUNDES = "https://images.unsplash.com/photo-1611251135345-18c56206b863?crop=entropy&cs=srgb&fm=jpg&q=85&w=1200"
+    BANNER_GENERIC = "https://api.dicebear.com/7.x/shapes/svg?seed={seed}&backgroundColor=003366&size=400"
+    BANNER_FRANCE = "https://api.dicebear.com/7.x/shapes/svg?seed={seed}&backgroundColor=002654,EE2A35&size=400"
+    BANNER_WTT = "https://api.dicebear.com/7.x/shapes/svg?seed={seed}&backgroundColor=FF3B30&size=400"
+    BANNER_BUNDES = "https://api.dicebear.com/7.x/shapes/svg?seed={seed}&backgroundColor=000000,DD0000,FFCE00&size=400"
 
     raw = [
         # ====== FRANCE ======
@@ -278,11 +278,13 @@ def all_competitions() -> list[dict]:
     out = []
     for (cid, name, short, cat, level, country,
          y1, m1, d1, y2, m2, d2, venue, banner, desc) in raw:
+        # Substitute seed in banner URL template for unique per-competition art
+        banner_filled = banner.replace("{seed}", cid)
         out.append(Competition(
             id=cid, name=name, short_name=short,
             category=cat, level=level, country=country,
             logo_url=f"https://api.dicebear.com/7.x/shapes/svg?seed={cid}&backgroundColor=FF3B30",
-            banner_url=banner,
+            banner_url=banner_filled,
             start_date=_iso(y1, m1, d1, 10, 0),
             end_date=_iso(y2, m2, d2, 22, 0),
             venue=venue,

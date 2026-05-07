@@ -26,25 +26,31 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 ## Implemented (2026-02)
 - [x] Auth JWT (register/login/me) — bcrypt
 - [x] Dashboard avec hero, stats, live, upcoming, recos IA, comps
-- [x] Live Scores (auto-refresh 15s)
-- [x] Matches list avec filtres status/catégorie
+- [x] Live Scores (auto-refresh 12s + bouton Sync WTT manuel + filtre genre)
+- [x] Matches list avec filtres status/catégorie/**genre (H/F/Tous)**
 - [x] Match Detail (score live, sets, stream YouTube, prédiction IA, résumé IA, H2H)
 - [x] Players list + profile + filtres pays/recherche
-- [x] Competitions list + detail + filtres catégorie + matches par round
+- [x] Competitions list + detail + filtres catégorie + matches par round + **filtre genre**
 - [x] Calendar (vue mensuelle, navigation, comps du mois)
 - [x] Search globale
 - [x] Favoris (joueurs + compétitions)
 - [x] Notifications page
 - [x] Chat Assistant flottant (Claude 4.5)
 - [x] AI Predictions / Summary / Recommendations endpoints
-- [x] Mock data seeder auto au boot
-- [x] Design "Performance Pro" complet
-- [x] Tests backend 40/40 ✅
+- [x] Real London 2026 ITTF World Team Champs data (men + women brackets jusqu'à R16)
+- [x] **All major competitions seeded** : France Pro A/B/N1 + Champ. France 2026, ITTF Worlds Doha 2027 + JO LA 2028, WTT (Singapore/Saudi/China/USA Smash + Champions Frankfurt/Incheon + Star Doha/Ljubljana + Contender Tunis/Zagreb/Buenos Aires + Feeder Westchester/Otočec), Bundesliga TTBL + TTBF, Chinese Super League H/F, ETTU Champions League H/F + Europe Cup
+- [x] **WTT live-score sync** (`POST /api/sync/wtt`) — tente fetch worldtabletennis.com puis fallback simulator déterministe
+- [x] **Filtre genre `?gender=men|women`** sur `/api/matches`, `/api/matches/live`, `/api/competitions/{id}/matches`
+- [x] Design "Performance Pro" complet (bannières uniques par compétition via Dicebear)
+- [x] Tests backend 59/59 ✅ (40 itération 1 + 19 nouveaux)
+
+## Stats (current)
+- 92 joueurs · 30 compétitions · 189 matchs · 4 LIVE
 
 ## Backlog (P0/P1/P2)
 ### P0 (next)
-- Brancher vraies APIs FFTT (libfftt), STATSCORE, LSports — keys API requises
-- Scraping fallback Livesport / AiScore
+- WTT real-time API parser (currently SPA-rendered, simulator fallback active) — investigate official WTT GraphQL or worldtabletennis.com Next.js `_next/data` JSON
+- Brancher vraies APIs FFTT (libfftt) pour scores Pro A/B en direct
 - Push notifications navigateur/mobile
 
 ### P1
@@ -54,6 +60,8 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 - Tableau bracket dynamique (tournoi)
 - Statistiques avancées (head-to-head sur N derniers matchs)
 - Mobile native app (React Native ou PWA installable)
+- Bracket Predictor (pronostics user → IA Claude évalue & score)
+- Split server.py en routers (auth/players/matches/comps/ai/admin) — approche 700 lignes
 
 ### P2
 - Copilot développeur (génération code interne, debug assisté)
@@ -61,3 +69,4 @@ Plateforme web + mobile dédiée au tennis de table professionnel : suivi temps 
 - Mode pari/coupons
 - Communauté (commentaires, likes)
 - Export calendrier .ics / Google Calendar
+- Rate-limiting sur `/api/sync/wtt` + auth admin requise
